@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>[%d{yyy-MM-dd HH:mm:ss,SSS}] %p %c - %m%n</pattern>
+    </encoder>
+  </appender>
+  <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <file>../logs/biz.log</file>
+    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+      <fileNamePattern>biz.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <maxHistory>30</maxHistory>
+      <totalSizeCap>30MB</totalSizeCap>
+    </rollingPolicy>
+    <encoder>
+      <pattern>[%d{yyy-MM-dd HH:mm:ss,SSS}] %p %c - %m%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="ch.qos.logback" level="warn" additivity="false">
+    <appender-ref ref="stdout"/>
+  </logger>
+
+  <logger name="org.springframework" level="warn" additivity="false">
+    <appender-ref ref="stdout"/>
+  </logger>
+
+  <logger name="com.alibaba" level="warn" additivity="false">
+    <appender-ref ref="stdout"/>
+  </logger>
+
+  <logger name="com.mchange" level="warn" additivity="false">
+    <appender-ref ref="stdout"/>
+  </logger>
+
+  <logger name="org.I0Itec" level="warn" additivity="false">
+    <appender-ref ref="stdout"/>
+  </logger>
+
+  <logger name="org.apache" level="warn" additivity="false">
+    <appender-ref ref="stdout"/>
+  </logger>
+
+  <logger name="io.netty" level="warn" additivity="false">
+    <appender-ref ref="stdout"/>
+  </logger>
+
+  <root level="debug">
+    <appender-ref ref="stdout"/>
+  </root>
+</configuration>
