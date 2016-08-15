@@ -14,4 +14,11 @@ public class DummyMessage extends Message {
   public String getMsg() {
     return msg;
   }
+
+  @Override
+  public String toString() {
+    return "DummyMessage{" +
+        "msg='" + msg + '\'' +
+        '}';
+  }
 }

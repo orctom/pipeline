@@ -49,9 +49,12 @@ public class Bootstrap {
 
   private Config loadConfig(String roleName) {
     final Config fallback = ConfigFactory.load("default");
-    final Config app = ConfigFactory.load().withFallback(fallback);
+    final Config role = ConfigFactory.load(roleName);
+    final Config app = ConfigFactory.load();
     return ConfigFactory.parseString(String.format("akka.cluster.roles = [%s]", roleName))
-        .withFallback(app);
+        .withFallback(role)
+        .withFallback(app)
+        .withFallback(fallback);
   }
 
   private void registerOnRemoved() {

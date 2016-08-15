@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class RoleA extends Hydrant {
 
@@ -18,7 +19,7 @@ public class RoleA extends Hydrant {
 
   @Override
   protected void run() {
-    int noOfWorkers = 5;
+    int noOfWorkers = 1;
     ExecutorService es = Executors.newFixedThreadPool(noOfWorkers);
     for (int i = 0; i < noOfWorkers; i++) {
       es.submit(new Runnable() {
@@ -27,6 +28,11 @@ public class RoleA extends Hydrant {
           while(!Thread.currentThread().isInterrupted()) {
             DummyMessage msg = new DummyMessage(RandomStringUtils.randomAlphanumeric(400));
             sendToSuccessor(msg);
+            try {
+              TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
           }
         }
       });

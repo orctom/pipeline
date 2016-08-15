@@ -8,7 +8,7 @@ import java.io.Serializable;
  */
 public abstract class Message implements Serializable {
 
-  private long timestamp;
+  protected long timestamp;
 
   public Message(long timestamp) {
     this.timestamp = timestamp;

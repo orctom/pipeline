@@ -8,18 +8,19 @@ import com.orctom.pipeline.model.Message;
  * Created by hao on 7/18/16.
  */
 public abstract class Outlet extends AbstractProcedure {
+
   @Override
-  protected void sendToSuccessor(Message message) {
+  protected final void sendToSuccessor(Message message) {
     throw new UnsupportedOperationException("Not supported operation.");
   }
 
   @Override
-  protected boolean isSuccessorsAvailable() {
+  protected final boolean isSuccessorsAvailable() {
     return false;
   }
 
   @Override
-  protected String getSuccessorRoleName() {
+  protected final String getSuccessorRoleName() {
     return null;
   }
 

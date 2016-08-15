@@ -1,15 +1,15 @@
 package com.orctom.pipeline;
 
-public class RoleAMain {
+public class RoleCMain {
 
   public static void main(String[] args) {
     String cluster = "dummy";
-    String role = "roleA";
+    String role = "roleC";
     final Bootstrap bootstrap = Bootstrap.create(cluster, role);
     bootstrap.start(new Runnable() {
       @Override
       public void run() {
-        bootstrap.createActor("roleA", RoleA.class);
+        bootstrap.createActor("roleC", RoleC.class);
       }
     });
   }
