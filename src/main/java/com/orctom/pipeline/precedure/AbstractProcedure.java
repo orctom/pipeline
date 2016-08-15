@@ -1,5 +1,6 @@
 package com.orctom.pipeline.precedure;
 
+import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
 import akka.cluster.Cluster;
@@ -28,6 +29,7 @@ public abstract class AbstractProcedure extends UntypedActor {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractProcedure.class);
 
   public static final String PREDECESSOR_UP = "_PREDECESSOR_UP_";
+  public static final String PREDECESSOR_UP_ACK = "_PREDECESSOR_UP_ACK_";
   public static final String SUCCESSOR_UP = "_SUCCESSOR_UP_";
 
   private Cluster cluster = Cluster.get(getContext().system());
@@ -70,10 +72,6 @@ public abstract class AbstractProcedure extends UntypedActor {
     }
   }
 
-  protected boolean isPredecessorsAvailable() {
-    return !predecessors.isEmpty();
-  }
-
   protected boolean isSuccessorsAvailable() {
     return !successors.routees().isEmpty();
   }
@@ -95,17 +93,22 @@ public abstract class AbstractProcedure extends UntypedActor {
       CurrentClusterState state = (CurrentClusterState) message;
       for (Member member : state.getMembers()) {
         if (member.status().equals(MemberStatus.up())) {
-          notifyPredecessors(member);
+          registerMember(member);
         }
       }
 
     } else if (message instanceof MemberUp) {
       MemberUp mUp = (MemberUp) message;
-      notifyPredecessors(mUp.member());
+      registerMember(mUp.member());
+
+    } else if (message.equals(PREDECESSOR_UP)) {
+      getSender().tell(PREDECESSOR_UP_ACK, getSelf());
+
+    } else if (message.equals(PREDECESSOR_UP_ACK)) {
+      addSuccessorToRoutee(getSender());
 
     } else if (message.equals(SUCCESSOR_UP)) {
-      getContext().watch(getSender());
-      successors.addRoutee(getSender());
+      addSuccessorToRoutee(getSender());
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
@@ -116,10 +119,29 @@ public abstract class AbstractProcedure extends UntypedActor {
     }
   }
 
-  private void notifyPredecessors(Member member) {
-    if (member.hasRole(getPredecessorRoleName()) && !predecessors.contains(member)) {
-      getContext().actorSelection(member.address().toString()).tell(SUCCESSOR_UP, getSelf());
-      predecessors.add(member);
+  private void addSuccessorToRoutee(ActorRef routee) {
+    if (successors.routees().contains(routee)) {
+      return;
     }
+
+    getContext().watch(routee);
+    successors.addRoutee(routee);
+  }
+
+  private void registerMember(Member member) {
+    if (member.hasRole(getPredecessorRoleName()) && !predecessors.contains(member)) {
+      notifyPredecessors(member);
+    } else if (member.hasRole(getSuccessorRoleName()) && !successors.routees().contains(member)) {
+      notifySuccessor(member);
+    }
+  }
+
+  private void notifyPredecessors(Member member) {
+    getContext().actorSelection(member.address().toString()).tell(SUCCESSOR_UP, getSelf());
+    predecessors.add(member);
+  }
+
+  private void notifySuccessor(Member member) {
+    getContext().actorSelection(member.address().toString()).tell(PREDECESSOR_UP, getSelf());
   }
 }

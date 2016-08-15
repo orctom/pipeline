@@ -15,11 +15,6 @@ public abstract class Hydrant extends AbstractProcedure {
   }
 
   @Override
-  protected boolean isPredecessorsAvailable() {
-    return false;
-  }
-
-  @Override
   protected void beforeStart() {
     run();
   }
