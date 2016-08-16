@@ -1,6 +1,8 @@
 package com.orctom.pipeline;
 
-import akka.actor.*;
+import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
+import akka.actor.UntypedActor;
 import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent.CurrentClusterState;
 import akka.cluster.ClusterEvent.MemberUp;
@@ -10,10 +12,12 @@ import com.orctom.pipeline.model.LocalActors;
 import com.orctom.pipeline.model.RemoteActors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.concurrent.duration.Duration;
 
-import java.util.Arrays;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Represents a node in the cluster.
@@ -27,6 +31,8 @@ public class Windtalker extends UntypedActor {
 
   private Cluster cluster = Cluster.get(getContext().system());
 
+  private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
   private LocalActors localActors;
 
   protected Set<String> predecessors;
@@ -37,14 +43,12 @@ public class Windtalker extends UntypedActor {
 
   @Override
   public void preStart() throws Exception {
-    if (LOGGER.isTraceEnabled()) {
-      LOGGER.trace("Staring Windtalker...");
-      if (hasPredecessors()) {
-        LOGGER.trace("{} -> this.", predecessors);
-        cluster.subscribe(getSelf(), MemberUp.class);
-      } else {
-        LOGGER.trace("Started (Hydrant).");
-      }
+    LOGGER.trace("Staring Windtalker...");
+    if (hasPredecessors()) {
+      LOGGER.trace("{} -> this.", predecessors);
+      cluster.subscribe(getSelf(), MemberUp.class);
+    } else {
+      LOGGER.trace("Started (Hydrant).");
     }
   }
 
@@ -111,13 +115,27 @@ public class Windtalker extends UntypedActor {
 
   private void notifyPredecessor(Member member) {
     String predecessorWindtalkerAddress = member.address() + "/user/" + NAME;
-    ActorSelection predecessor = getContext().actorSelection(predecessorWindtalkerAddress);
-    RemoteActors remoteActors = new RemoteActors(localActors.getActors());
-//    getContext().system().scheduler().schedule(
-//        Duration.Zero(), Duration.create(1, "second"), getSelf(), Do,
-//        getContext().dispatcher(), null
-//    );
+    final ActorSelection predecessor = getContext().actorSelection(predecessorWindtalkerAddress);
+    final RemoteActors remoteActors = new RemoteActors(localActors.getActors());
+
+//    scheduledCall(predecessor, remoteActors);
     predecessor.tell(remoteActors, getSelf());
+
     LOGGER.trace("  Notified predecessor windtalker {}.", predecessorWindtalkerAddress);
+  }
+
+  private void scheduledCall(final ActorSelection predecessor, final RemoteActors remoteActors) {
+    final ScheduledFuture<?> notifyHandle = scheduler.scheduleAtFixedRate(new Runnable() {
+      @Override
+      public void run() {
+        predecessor.tell(remoteActors, getSelf());
+      }
+    }, 0, 3, TimeUnit.SECONDS);
+
+    scheduler.schedule(new Runnable() {
+      public void run() {
+        notifyHandle.cancel(true);
+      }
+    }, 15, TimeUnit.SECONDS);
   }
 }

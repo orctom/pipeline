@@ -9,8 +9,7 @@ import com.orctom.pipeline.model.Message;
 public abstract class Hydrant extends Pipe {
 
   @Override
-  public void preStart() throws Exception {
-    super.preStart();
+  protected void started() {
     run();
   }
 
