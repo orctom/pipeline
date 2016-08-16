@@ -7,7 +7,7 @@ public class DummyMessage extends Message {
   private String msg;
 
   public DummyMessage(String msg) {
-    super(System.currentTimeMillis());
+    super();
     this.msg = msg;
   }
 
