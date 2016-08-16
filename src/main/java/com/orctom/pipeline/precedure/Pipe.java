@@ -4,19 +4,22 @@ import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
 import akka.cluster.Cluster;
-import akka.cluster.ClusterEvent;
-import akka.cluster.Member;
-import akka.cluster.MemberStatus;
 import akka.routing.RoundRobinRoutingLogic;
+import akka.routing.Routee;
 import akka.routing.Router;
 import com.orctom.pipeline.model.Message;
 import com.orctom.pipeline.model.RemoteActors;
+import com.orctom.pipeline.utils.SimpleMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.collection.Iterator;
 
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
-import static akka.cluster.ClusterEvent.*;
+import static akka.cluster.ClusterEvent.CurrentClusterState;
+import static akka.cluster.ClusterEvent.MemberUp;
 
 /**
  * Automatically notifyPredecessors / unregister predecessors and successors in the cluster,
@@ -25,7 +28,7 @@ import static akka.cluster.ClusterEvent.*;
  */
 public abstract class Pipe extends UntypedActor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Pipe.class);
+  protected Logger logger = LoggerFactory.getLogger(getClass());
 
   private Cluster cluster = Cluster.get(getContext().system());
 
@@ -33,10 +36,24 @@ public abstract class Pipe extends UntypedActor {
 
   protected abstract void onMessage(Message message);
 
+  private SimpleMetrics metrics = SimpleMetrics.create(logger, 10, TimeUnit.SECONDS);
+
   @Override
   public void preStart() throws Exception {
-    LOGGER.debug("Staring {}...", getSelf().path());
+    logger.debug("Staring {}...", getSelf().path());
     cluster.subscribe(getSelf(), MemberUp.class);
+
+    metrics.gauge("routee", new Callable<Integer>() {
+      @Override
+      public Integer call() throws Exception {
+        Iterator<Routee> it = successors.routees().iterator();
+        while (it.hasNext()) {
+          Routee routee = it.next();
+          logger.debug("routee: {}", routee.toString());
+        }
+        return successors.routees().length();
+      }
+    });
   }
 
   @Override
@@ -49,12 +66,13 @@ public abstract class Pipe extends UntypedActor {
   }
 
   protected void started() {
+
   }
 
   protected void sendToSuccessor(Message message) {
-    LOGGER.trace("sending to successor {}", message);
+    logger.trace("sending to successor {}", message);
     if (!isSuccessorsAvailable()) {
-//      LOGGER.error("No available successors, discarding...");
+//      logger.error("No available successors, discarding...");
       return;
     }
     successors.route(message, getSelf());
@@ -67,20 +85,20 @@ public abstract class Pipe extends UntypedActor {
 
     } else if (message instanceof RemoteActors) {
       RemoteActors remoteActors = (RemoteActors) message;
-      LOGGER.trace("Received actors of successors: {}", remoteActors.getActors());
+      logger.debug("Received routee candidates: {}", remoteActors.getActors());
       addSuccessorsToRoutee(remoteActors.getActors());
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
       successors = successors.removeRoutee(terminated.getActor());
-      LOGGER.trace("Successor {} terminated.", terminated.getActor().toString());
+      logger.warn("Routee {} terminated.", terminated.getActor().toString());
     } else if (message instanceof CurrentClusterState) {
-      LOGGER.debug("Started {}.", getSelf().path());
+      logger.debug("Started {}.", getSelf().path());
       started();
 
     } else {
       unhandled(message);
-      LOGGER.trace("Unhandled message: {}.", message);
+      logger.trace("Unhandled message: {}.", message);
     }
   }
 
@@ -91,14 +109,14 @@ public abstract class Pipe extends UntypedActor {
   }
 
   private void addSuccessorToRoutee(ActorRef routee) {
-    LOGGER.trace("Adding as routee {}.", routee.toString());
+    logger.debug("Adding as routee {}.", routee.toString());
     if (successors.routees().contains(routee)) {
-      LOGGER.trace(" Already exists.");
+      logger.debug("Already exists.");
       return;
     }
 
     getContext().watch(routee);
     successors = successors.addRoutee(routee);
-    LOGGER.trace(" Added.");
+    logger.info("Added as routee {}.", routee.toString());
   }
 }

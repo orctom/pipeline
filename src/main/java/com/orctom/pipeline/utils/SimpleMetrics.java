@@ -67,7 +67,7 @@ public class SimpleMetrics {
 
   public void mark(String key) {
     SimpleMetricsMeter meter = meter(key);
-    meter.increase();
+    meter.mark();
   }
 
   public SimpleMetricsMeter meter(String key) {

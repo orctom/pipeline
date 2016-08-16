@@ -1,5 +1,7 @@
 package com.orctom.pipeline.model;
 
+import com.orctom.pipeline.utils.IdUtils;
+
 import java.io.Serializable;
 
 /**
@@ -8,10 +10,16 @@ import java.io.Serializable;
  */
 public abstract class Message implements Serializable {
 
-  protected long timestamp;
+  private long id;
+  private long timestamp;
 
-  public Message(long timestamp) {
-    this.timestamp = timestamp;
+  public Message() {
+    id = IdUtils.generate();
+    timestamp = System.currentTimeMillis();
+  }
+
+  public long getId() {
+    return id;
   }
 
   public long getTimestamp() {

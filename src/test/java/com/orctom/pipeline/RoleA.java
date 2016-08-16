@@ -3,8 +3,6 @@ package com.orctom.pipeline;
 import com.orctom.pipeline.precedure.Hydrant;
 import com.orctom.pipeline.utils.SimpleMetrics;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -12,9 +10,7 @@ import java.util.concurrent.TimeUnit;
 
 public class RoleA extends Hydrant {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RoleA.class);
-
-  private static final SimpleMetrics metrics = SimpleMetrics.create(LOGGER, 5, TimeUnit.SECONDS);
+  private SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
 
   private static final String KEY = "roleA";
 

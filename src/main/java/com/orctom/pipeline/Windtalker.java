@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Set;
+import java.util.Timer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -43,12 +44,12 @@ public class Windtalker extends UntypedActor {
 
   @Override
   public void preStart() throws Exception {
-    LOGGER.trace("Staring Windtalker...");
+    LOGGER.debug("Staring Windtalker...");
     if (hasPredecessors()) {
-      LOGGER.trace("{} -> this.", predecessors);
+      LOGGER.debug("{} -> this.", predecessors);
       cluster.subscribe(getSelf(), MemberUp.class);
     } else {
-      LOGGER.trace("Started (Hydrant).");
+      LOGGER.debug("Started (Hydrant).");
     }
   }
 
@@ -65,11 +66,11 @@ public class Windtalker extends UntypedActor {
   public final void onReceive(Object message) throws Exception {
     if (message instanceof LocalActors) {
       localActors = (LocalActors) message;
-      LOGGER.trace("Get a list of local actors: {}.", localActors.getActors());
+      LOGGER.debug("Get a list of local actors: {}.", localActors.getActors());
 
     } else if (message instanceof RemoteActors) {
       RemoteActors remoteActors = (RemoteActors) message;
-      LOGGER.trace("Get a list of remote actors: {}.", remoteActors.getActors());
+      LOGGER.debug("Get a list of remote actors: {}.", remoteActors.getActors());
       informLocalActors(remoteActors);
 
     } else if (message instanceof CurrentClusterState) {
@@ -118,10 +119,9 @@ public class Windtalker extends UntypedActor {
     final ActorSelection predecessor = getContext().actorSelection(predecessorWindtalkerAddress);
     final RemoteActors remoteActors = new RemoteActors(localActors.getActors());
 
-//    scheduledCall(predecessor, remoteActors);
     predecessor.tell(remoteActors, getSelf());
 
-    LOGGER.trace("  Notified predecessor windtalker {}.", predecessorWindtalkerAddress);
+    LOGGER.debug("  Notified predecessor windtalker {}.", predecessorWindtalkerAddress);
   }
 
   private void scheduledCall(final ActorSelection predecessor, final RemoteActors remoteActors) {
@@ -136,6 +136,6 @@ public class Windtalker extends UntypedActor {
       public void run() {
         notifyHandle.cancel(true);
       }
-    }, 15, TimeUnit.SECONDS);
+    }, 10, TimeUnit.SECONDS);
   }
 }

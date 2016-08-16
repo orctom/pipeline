@@ -60,14 +60,14 @@ public class Bootstrap {
   private void onStartup() {
     windtalker = system.actorOf(Props.create(Windtalker.class, predecessors), Windtalker.NAME);
     windtalker.tell(new LocalActors(actors), ActorRef.noSender());
-    LOGGER.trace("Bootstrap started.");
+    LOGGER.debug("Bootstrap started.");
   }
 
   public ActorRef createActor(String name, Class<?> clazz, Object... args) {
-    LOGGER.trace("Creating actor: {}.", name);
+    LOGGER.debug("Creating actor: {}.", name);
     ActorRef actor = system.actorOf(Props.create(clazz, args), name);
     actors.add(actor);
-    LOGGER.trace("Created actor: {}.", name);
+    LOGGER.debug("Created actor: {}.", name);
     return actor;
   }
 

@@ -26,7 +26,7 @@ public class SimpleMetricsMeter {
     return value.get();
   }
 
-  public void increase() {
+  public void mark() {
     value.incrementAndGet();
   }
 
