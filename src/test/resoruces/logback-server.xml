@@ -16,37 +16,12 @@
     </encoder>
   </appender>
 
-  <logger name="guru.springframework" level="warn" additivity="false">
+  <logger name="com.orctom" level="info" additivity="false">
     <appender-ref ref="stdout"/>
     <appender-ref ref="file"/>
   </logger>
 
-  <logger name="com.alibaba" level="warn" additivity="false">
-    <appender-ref ref="stdout"/>
-    <appender-ref ref="file"/>
-  </logger>
-
-  <logger name="com.mchange" level="warn" additivity="false">
-    <appender-ref ref="stdout"/>
-    <appender-ref ref="file"/>
-  </logger>
-
-  <logger name="org.I0Itec" level="warn" additivity="false">
-    <appender-ref ref="stdout"/>
-    <appender-ref ref="file"/>
-  </logger>
-
-  <logger name="org.apache" level="warn" additivity="false">
-    <appender-ref ref="stdout"/>
-    <appender-ref ref="file"/>
-  </logger>
-
-  <logger name="io.netty" level="warn" additivity="false">
-    <appender-ref ref="stdout"/>
-    <appender-ref ref="file"/>
-  </logger>
-
-  <root level="debug">
+  <root level="warn">
     <appender-ref ref="stdout"/>
     <appender-ref ref="file"/>
   </root>

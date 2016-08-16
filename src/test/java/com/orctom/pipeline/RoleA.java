@@ -1,21 +1,13 @@
 package com.orctom.pipeline;
 
-import com.orctom.pipeline.model.Message;
-import com.orctom.pipeline.precedure.AbstractProcedure;
 import com.orctom.pipeline.precedure.Hydrant;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class RoleA extends Hydrant {
-
-  @Override
-  protected String getSuccessorRoleName() {
-    return "roleB";
-  }
 
   @Override
   protected void run() {
@@ -25,11 +17,11 @@ public class RoleA extends Hydrant {
       es.submit(new Runnable() {
         @Override
         public void run() {
-          while(!Thread.currentThread().isInterrupted()) {
+          while (!Thread.currentThread().isInterrupted()) {
             DummyMessage msg = new DummyMessage(RandomStringUtils.randomAlphanumeric(400));
             sendToSuccessor(msg);
             try {
-              TimeUnit.SECONDS.sleep(1);
+              TimeUnit.SECONDS.sleep(10);
             } catch (InterruptedException e) {
               e.printStackTrace();
             }

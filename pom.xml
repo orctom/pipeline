@@ -32,6 +32,13 @@
       <groupId>org.apache.curator</groupId>
       <artifactId>curator-test</artifactId>
       <version>${curator.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>log4j</artifactId>
+          <groupId>log4j</groupId>
+        </exclusion>
+      </exclusions>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -42,6 +49,11 @@
     <dependency>
       <groupId>com.typesafe.akka</groupId>
       <artifactId>akka-kernel_2.11</artifactId>
+      <version>${akka.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-contrib_2.11</artifactId>
       <version>${akka.version}</version>
     </dependency>
     <dependency>

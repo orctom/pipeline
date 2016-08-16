@@ -1,21 +1,16 @@
 package com.orctom.pipeline.precedure;
 
-import com.google.common.base.Strings;
 import com.orctom.pipeline.model.Message;
 
 /**
  * source of stream
  * Created by hao on 7/18/16.
  */
-public abstract class Hydrant extends AbstractProcedure {
+public abstract class Hydrant extends Pipe {
 
   @Override
-  protected final String getPredecessorRoleName() {
-    return null;
-  }
-
-  @Override
-  protected void beforeStart() {
+  public void preStart() throws Exception {
+    super.preStart();
     run();
   }
 
@@ -23,12 +18,5 @@ public abstract class Hydrant extends AbstractProcedure {
 
   @Override
   protected void onMessage(Message message) {
-  }
-
-  @Override
-  protected void validate() {
-    if (Strings.isNullOrEmpty(getSuccessorRoleName())) {
-      throw new IllegalArgumentException("getSuccessorRoleName() not providing validate value");
-    }
   }
 }
