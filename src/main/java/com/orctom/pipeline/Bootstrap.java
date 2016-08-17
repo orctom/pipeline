@@ -5,6 +5,7 @@ import akka.cluster.Cluster;
 import akka.cluster.seed.ZookeeperClusterSeed;
 import com.google.common.collect.Sets;
 import com.orctom.pipeline.model.LocalActors;
+import com.orctom.pipeline.utils.IdUtils;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ public class Bootstrap {
   }
 
   public static Bootstrap create(String clusterName, String roleName, String... predecessors) {
+    IdUtils.generate();
     return new Bootstrap(clusterName, roleName, Sets.newHashSet(predecessors));
   }
 
@@ -67,7 +69,7 @@ public class Bootstrap {
     LOGGER.debug("Creating actor: {}.", name);
     ActorRef actor = system.actorOf(Props.create(clazz, args), name);
     actors.add(actor);
-    LOGGER.debug("Created actor: {}.", name);
+    LOGGER.debug("Created  actor: {}.", name);
     return actor;
   }
 

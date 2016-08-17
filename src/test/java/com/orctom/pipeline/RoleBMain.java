@@ -6,11 +6,7 @@ public class RoleBMain {
     String cluster = "dummy";
     String role = "roleB";
     final Bootstrap bootstrap = Bootstrap.create(cluster, role, "roleA");
-    bootstrap.start(new Runnable() {
-      @Override
-      public void run() {
-        bootstrap.createActor("roleB", RoleB.class);
-      }
-    });
+    bootstrap.createActor("roleB", RoleB.class);
+    bootstrap.start();
   }
 }

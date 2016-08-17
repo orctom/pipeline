@@ -18,6 +18,11 @@ public abstract class Message implements Serializable {
     timestamp = System.currentTimeMillis();
   }
 
+  public Message(Message msg) {
+    id = msg.getId();
+    timestamp = msg.getTimestamp();
+  }
+
   public long getId() {
     return id;
   }

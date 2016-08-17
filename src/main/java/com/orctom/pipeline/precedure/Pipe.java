@@ -3,7 +3,6 @@ package com.orctom.pipeline.precedure;
 import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
-import akka.cluster.Cluster;
 import akka.routing.RoundRobinRoutingLogic;
 import akka.routing.Routee;
 import akka.routing.Router;
@@ -18,9 +17,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import static akka.cluster.ClusterEvent.CurrentClusterState;
-import static akka.cluster.ClusterEvent.MemberUp;
-
 /**
  * Automatically notifyPredecessors / unregister predecessors and successors in the cluster,
  * So that current actor can get a list of live predecessors and successors.
@@ -30,8 +26,6 @@ public abstract class Pipe extends UntypedActor {
 
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
-  private Cluster cluster = Cluster.get(getContext().system());
-
   private Router successors = new Router(new RoundRobinRoutingLogic());
 
   protected abstract void onMessage(Message message);
@@ -40,25 +34,11 @@ public abstract class Pipe extends UntypedActor {
 
   @Override
   public void preStart() throws Exception {
-    logger.debug("Staring {}...", getSelf().path());
-    cluster.subscribe(getSelf(), MemberUp.class);
+    logger.debug("Staring actor: {}...", getSelf().path());
 
-    metrics.gauge("routee", new Callable<Integer>() {
-      @Override
-      public Integer call() throws Exception {
-        Iterator<Routee> it = successors.routees().iterator();
-        while (it.hasNext()) {
-          Routee routee = it.next();
-          logger.debug("routee: {}", routee.toString());
-        }
-        return successors.routees().length();
-      }
-    });
-  }
-
-  @Override
-  public void postStop() throws Exception {
-    cluster.unsubscribe(getSelf());
+    if (logger.isTraceEnabled()) {
+      logRoutees();
+    }
   }
 
   protected boolean isSuccessorsAvailable() {
@@ -66,13 +46,25 @@ public abstract class Pipe extends UntypedActor {
   }
 
   protected void started() {
+  }
 
+  private void logRoutees() {
+    metrics.gauge("routee", new Callable<Integer>() {
+      @Override
+      public Integer call() throws Exception {
+        Iterator<Routee> it = successors.routees().iterator();
+        while (it.hasNext()) {
+          logger.trace("routee: {}", it.next().toString());
+        }
+        return successors.routees().length();
+      }
+    });
   }
 
   protected void sendToSuccessor(Message message) {
     logger.trace("sending to successor {}", message);
     if (!isSuccessorsAvailable()) {
-//      logger.error("No available successors, discarding...");
+      logger.debug("No available successors, discarding...");
       return;
     }
     successors.route(message, getSelf());
@@ -80,21 +72,19 @@ public abstract class Pipe extends UntypedActor {
 
   @Override
   public final void onReceive(Object message) throws Exception {
-    if (message instanceof Message) {
-      onMessage((Message) message);
-
-    } else if (message instanceof RemoteActors) {
+    if (message instanceof RemoteActors) { // from windtalker
       RemoteActors remoteActors = (RemoteActors) message;
       logger.debug("Received routee candidates: {}", remoteActors.getActors());
       addSuccessorsToRoutee(remoteActors.getActors());
+      started();
+
+    } else if (message instanceof Message) {
+      onMessage((Message) message);
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
       successors = successors.removeRoutee(terminated.getActor());
       logger.warn("Routee {} terminated.", terminated.getActor().toString());
-    } else if (message instanceof CurrentClusterState) {
-      logger.debug("Started {}.", getSelf().path());
-      started();
 
     } else {
       unhandled(message);

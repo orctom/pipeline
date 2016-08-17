@@ -25,11 +25,11 @@ public class RoleA extends Hydrant {
           while (!Thread.currentThread().isInterrupted()) {
             DummyMessage msg = new DummyMessage(RandomStringUtils.randomAlphanumeric(400));
             sendToSuccessor(msg);
-            try {
-              TimeUnit.SECONDS.sleep(5);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
+//            try {
+//              TimeUnit.SECONDS.sleep(5);
+//            } catch (InterruptedException e) {
+//              e.printStackTrace();
+//            }
             metrics.mark(KEY);
           }
         }
