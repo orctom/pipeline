@@ -9,7 +9,7 @@ import com.orctom.pipeline.model.Message;
 public abstract class Outlet extends Pipe {
 
   @Override
-  protected final void sendToSuccessor(Message message) {
+  protected final void sendToSuccessors(Message message) {
     throw new UnsupportedOperationException("Not supported operation.");
   }
 

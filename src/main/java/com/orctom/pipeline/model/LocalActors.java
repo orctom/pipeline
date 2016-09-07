@@ -2,8 +2,8 @@ package com.orctom.pipeline.model;
 
 import akka.actor.ActorRef;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * actors of created actor
@@ -11,14 +11,20 @@ import java.util.Set;
  */
 public class LocalActors extends Message {
 
-  private Set<ActorRef> actors = new HashSet<>();
+  private String role;
+  private List<ActorRef> actors = new ArrayList<>();
 
-  public LocalActors(Set<ActorRef> actors) {
+  public LocalActors(String role, List<ActorRef> actors) {
     super();
+    this.role = role;
     this.actors = actors;
   }
 
-  public Set<ActorRef> getActors() {
+  public String getRole() {
+    return role;
+  }
+
+  public List<ActorRef> getActors() {
     return actors;
   }
 }

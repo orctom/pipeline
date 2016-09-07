@@ -15,7 +15,7 @@ public class RoleB extends Pipe {
   @Override
   protected void onMessage(Message message) {
     logger.trace("[B] " + message);
-    sendToSuccessor(message);
+    sendToSuccessors(message);
     metrics.mark(KEY);
   }
 }

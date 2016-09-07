@@ -14,7 +14,7 @@
 
   <properties>
     <curator.version>2.9.1</curator.version>
-    <akka.version>2.4.9-RC2</akka.version>
+    <akka.version>2.4.9</akka.version>
   </properties>
 
   <dependencies>

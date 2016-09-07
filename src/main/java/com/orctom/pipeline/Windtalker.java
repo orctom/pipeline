@@ -8,7 +8,10 @@ import akka.cluster.ClusterEvent.CurrentClusterState;
 import akka.cluster.ClusterEvent.MemberUp;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
-import com.orctom.pipeline.model.*;
+import com.orctom.pipeline.model.LocalActors;
+import com.orctom.pipeline.model.MessageAck;
+import com.orctom.pipeline.model.MessageCache;
+import com.orctom.pipeline.model.RemoteActors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,8 +126,8 @@ public class Windtalker extends UntypedActor {
 
   private void notifyPredecessor(Member member) {
     String predecessorWindtalkerAddress = member.address() + "/user/" + NAME;
-    final ActorSelection predecessor = getContext().actorSelection(predecessorWindtalkerAddress);
-    final RemoteActors remoteActors = new RemoteActors(localActors.getActors());
+    ActorSelection predecessor = getContext().actorSelection(predecessorWindtalkerAddress);
+    RemoteActors remoteActors = new RemoteActors(localActors.getRole(), localActors.getActors());
 
     predecessor.tell(remoteActors, getSelf());
     windtalkerMessages.put(remoteActors.getId(), new MessageCache<>(predecessor, remoteActors));

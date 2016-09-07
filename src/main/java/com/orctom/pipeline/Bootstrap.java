@@ -1,6 +1,9 @@
 package com.orctom.pipeline;
 
-import akka.actor.*;
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.actor.ExtendedActorSystem;
+import akka.actor.Props;
 import akka.cluster.Cluster;
 import akka.cluster.seed.ZookeeperClusterSeed;
 import com.google.common.collect.Sets;
@@ -11,7 +14,8 @@ import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -22,13 +26,15 @@ public class Bootstrap {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Bootstrap.class);
 
+  protected String role;
   protected final ActorSystem system;
   protected ActorRef windtalker;
   protected Set<String> predecessors;
 
-  private Set<ActorRef> actors = new HashSet<>();
+  private List<ActorRef> actors = new ArrayList<>();
 
   private Bootstrap(String clusterName, String roleName, Set<String> predecessors) {
+    this.role = roleName;
     Config config = loadConfig(roleName);
     system = ActorSystem.create(clusterName, config);
     this.predecessors = predecessors;
@@ -61,7 +67,7 @@ public class Bootstrap {
 
   private void onStartup() {
     windtalker = system.actorOf(Props.create(Windtalker.class, predecessors), Windtalker.NAME);
-    windtalker.tell(new LocalActors(actors), ActorRef.noSender());
+    windtalker.tell(new LocalActors(role, actors), ActorRef.noSender());
     LOGGER.debug("Bootstrap started.");
   }
 

@@ -3,17 +3,15 @@ package com.orctom.pipeline.precedure;
 import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
-import akka.routing.RoundRobinRoutingLogic;
-import akka.routing.Routee;
-import akka.routing.Router;
+import com.orctom.pipeline.model.GroupSuccessors;
 import com.orctom.pipeline.model.Message;
 import com.orctom.pipeline.model.RemoteActors;
+import com.orctom.pipeline.model.Successors;
 import com.orctom.pipeline.utils.SimpleMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.collection.Iterator;
 
-import java.util.Set;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -26,9 +24,7 @@ public abstract class Pipe extends UntypedActor {
 
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
-  private Router successors = new Router(new RoundRobinRoutingLogic());
-
-  protected abstract void onMessage(Message message);
+  private Successors successors = new Successors(getContext());
 
   private SimpleMetrics metrics = SimpleMetrics.create(logger, 10, TimeUnit.SECONDS);
 
@@ -37,45 +33,46 @@ public abstract class Pipe extends UntypedActor {
     logger.debug("Staring actor: {}...", getSelf().path());
 
     if (logger.isTraceEnabled()) {
-      logRoutees();
+      logSuccessors();
     }
   }
 
   protected boolean isSuccessorsAvailable() {
-    return !successors.routees().isEmpty();
+    return !successors.isEmpty();
   }
 
   protected void started() {
   }
 
-  private void logRoutees() {
+  private void logSuccessors() {
     metrics.gauge("routee", new Callable<Integer>() {
       @Override
       public Integer call() throws Exception {
-        Iterator<Routee> it = successors.routees().iterator();
-        while (it.hasNext()) {
-          logger.trace("routee: {}", it.next().toString());
+        if (logger.isTraceEnabled()) {
+          logger.trace(successors.toString());
         }
-        return successors.routees().length();
+        return successors.size();
       }
     });
   }
 
-  protected void sendToSuccessor(Message message) {
+  protected void sendToSuccessors(Message message) {
     logger.trace("sending to successor {}", message);
     if (!isSuccessorsAvailable()) {
       logger.debug("No available successors, discarding...");
       return;
     }
-    successors.route(message, getSelf());
+    for (GroupSuccessors groupSuccessors : successors.getGroups()) {
+      groupSuccessors.sendMessage(message, getSelf());
+    }
   }
 
   @Override
   public final void onReceive(Object message) throws Exception {
     if (message instanceof RemoteActors) { // from windtalker
       RemoteActors remoteActors = (RemoteActors) message;
-      logger.debug("Received routee candidates: {}", remoteActors.getActors());
-      addSuccessorsToRoutee(remoteActors.getActors());
+      logger.debug("Received successors: {} -> {}", remoteActors.getRole(), remoteActors.getActors());
+      addSuccessors(remoteActors.getRole(), remoteActors.getActors());
       started();
 
     } else if (message instanceof Message) {
@@ -83,7 +80,7 @@ public abstract class Pipe extends UntypedActor {
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
-      successors = successors.removeRoutee(terminated.getActor());
+      successors.remove(terminated.getActor());
       logger.warn("Routee {} terminated.", terminated.getActor().toString());
 
     } else {
@@ -92,21 +89,20 @@ public abstract class Pipe extends UntypedActor {
     }
   }
 
-  private void addSuccessorsToRoutee(Set<ActorRef> routees) {
-    for (ActorRef routee : routees) {
-      addSuccessorToRoutee(routee);
+  protected abstract void onMessage(Message message);
+
+  private void addSuccessors(String role, List<ActorRef> actorRefs) {
+    for (ActorRef actorRef : actorRefs) {
+      addSuccessor(role, actorRef);
     }
   }
 
-  private void addSuccessorToRoutee(ActorRef routee) {
-    logger.debug("Adding as routee {}.", routee.toString());
-    if (successors.routees().contains(routee)) {
+  private void addSuccessor(String role, ActorRef actorRef) {
+    logger.debug("Adding as routee {}.", actorRef.toString());
+    if (successors.addSuccessor(role, actorRef)) {
+      getContext().watch(actorRef);
+    } else {
       logger.debug("Already exists.");
-      return;
     }
-
-    getContext().watch(routee);
-    successors = successors.addRoutee(routee);
-    logger.info("Added as routee {}.", routee.toString());
   }
 }
