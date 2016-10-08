@@ -3,14 +3,8 @@ package com.orctom.pipeline.utils;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.orctom.pipeline.exception.MessageCacheException;
-import org.rocksdb.ColumnFamilyDescriptor;
-import org.rocksdb.ColumnFamilyHandle;
-import org.rocksdb.ColumnFamilyOptions;
-import org.rocksdb.DBOptions;
-import org.rocksdb.RocksDB;
-import org.rocksdb.RocksDBException;
-import org.rocksdb.WriteBatch;
-import org.rocksdb.WriteOptions;
+import com.orctom.pipeline.model.MessageEntry;
+import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,10 +90,6 @@ public class MessageCache {
     }
   }
 
-  public void save(ColumnFamilyDescriptor family, String key, String value) {
-    writeBatches.get(family).put(key.getBytes(), value.getBytes());
-  }
-
   private void persist(WriteBatch batch) {
     LOGGER.debug("size: {}", batch.count());
     try {
@@ -110,15 +100,46 @@ public class MessageCache {
     }
   }
 
-  public void remove(ColumnFamilyDescriptor family, String key) {
+  public String get(ColumnFamilyDescriptor family, String key) {
     try {
-      db.remove(columnFamilyHandles.get(family), key.getBytes());
+      return new String(db.get(columnFamilyHandles.get(family), key.getBytes()));
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
     }
   }
 
-  public void markAsSent(String key) {
+  public MessageEntry get() {
+    RocksIterator iterator = db.newIterator();
+    iterator.seekToFirst();
+    iterator.next();
+    return iterator.isValid() ? new MessageEntry(iterator.key(), iterator.value()) : null;
+  }
 
+  public void add(String key, String value) {
+    add(COLUMN_FAMILY_DEFAULT, key, value);
+  }
+
+  public void add(ColumnFamilyDescriptor family, String key, String value) {
+    writeBatches.get(family).put(key.getBytes(), value.getBytes());
+  }
+
+  public void isDuplicated(String key) {
+    // TODO
+  }
+
+  public void remove(ColumnFamilyDescriptor family, String key) {
+    writeBatches.get(family).remove(key.getBytes());
+  }
+
+  public void markAsSent(String key, String value) {
+    LOGGER.debug("mark as sent: {}", key);
+    remove(COLUMN_FAMILY_DEFAULT, key);
+    add(COLUMN_FAMILY_SENT, key, value);
+  }
+
+  public void markAsAcked(String key, String value) {
+    LOGGER.debug("mark as acked: {}", key);
+    remove(COLUMN_FAMILY_SENT, key);
+    add(COLUMN_FAMILY_ACKED, key, value);
   }
 }
