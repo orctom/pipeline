@@ -35,7 +35,8 @@ public class Bootstrap {
 
   private Bootstrap(String clusterName, String roleName, Set<String> predecessors) {
     this.role = roleName;
-    Config config = loadConfig(roleName);
+    Configurator.init(roleName);
+    Config config = Configurator.getInstance().getConfig();
     system = ActorSystem.create(clusterName, config);
     this.predecessors = predecessors;
   }
@@ -77,14 +78,6 @@ public class Bootstrap {
     actors.add(actor);
     LOGGER.debug("Created  actor: {}.", name);
     return actor;
-  }
-
-  private Config loadConfig(String roleName) {
-    final Config role = ConfigFactory.load(roleName);
-    final Config app = ConfigFactory.load();
-    return ConfigFactory.parseString(String.format("akka.cluster.roles = [%s]", roleName))
-        .withFallback(role)
-        .withFallback(app);
   }
 
   private void registerOnRemoved() {
