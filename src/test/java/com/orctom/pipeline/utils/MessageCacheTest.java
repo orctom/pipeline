@@ -24,7 +24,9 @@ public class MessageCacheTest {
 
   @AfterClass
   public static void afterClass() {
-    cache.close();
+    if (null != cache) {
+      cache.close();
+    }
   }
 
   @Test
@@ -45,11 +47,32 @@ public class MessageCacheTest {
       public void run() {
         for (int i = 0; i < 1_000; i++) {
           MessageEntry msg = cache.get();
+          if (null == msg) {
+            LOGGER.info("emtpy message");
+            continue;
+          }
           process(msg.getKey(), msg.getValue());
           cache.markAsSent(msg.getKey(), msg.getValue());
         }
       }
     };
+    addThread.start();
+    workerThread.start();
+    cache.debug();
+    sleepForAWhile();
+    cache.debug();
+    sleepForAWhile();
+    cache.debug();
+    sleepForAWhile();
+    cache.debug();
+    sleepForAWhile();
+    cache.debug();
+    sleepForAWhile();
+    cache.debug();
+    sleepForAWhile();
+    cache.debug();
+    sleepForAWhile();
+    cache.debug();
   }
 
   private void sleepForAWhile() {

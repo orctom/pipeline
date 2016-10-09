@@ -1,5 +1,4 @@
 .springBeans
-*.class
 *.ear
 .project
 .classpath
@@ -16,7 +15,6 @@
 */target/
 */build/
 */bin/
-*/classes/
 
 .settings/
 .idea/
@@ -26,7 +24,5 @@ target/
 build/
 bin/
 classes/
-*.sh
-example
-rocks
+data
 DummyTest

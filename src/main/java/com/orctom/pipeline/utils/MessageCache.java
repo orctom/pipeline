@@ -8,6 +8,7 @@ import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -17,8 +18,6 @@ import java.util.*;
 public class MessageCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageCache.class);
-
-  private String id;
 
   private static final ColumnFamilyDescriptor COLUMN_FAMILY_DEFAULT = new ColumnFamilyDescriptor(
       RocksDB.DEFAULT_COLUMN_FAMILY,
@@ -45,29 +44,73 @@ public class MessageCache {
 
   private Map<ColumnFamilyDescriptor, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
 
-  private RocksDB db;
-  private DBOptions options = new DBOptions().setCreateIfMissing(true);
+  private TtlDB db;
+  private DBOptions options = new DBOptions();
   private WriteOptions writeOptions = new WriteOptions();
 
   public MessageCache(String id) {
-    this.id = id;
-    open();
+    this(id, 1800);
+  }
+
+  public MessageCache(String id, int ttl) {
+    String path = "data/" + id;
+    initDB(path);
+    open(path, ttl);
     initBatchThread();
   }
 
-  private void open() {
-    try {
-      List<ColumnFamilyHandle> handles = new ArrayList<>();
-      db = RocksDB.open(options, id, COLUMN_FAMILY_DESCRIPTORS, handles);
-      initHandlers(handles);
+  private void initDB(String path) {
+    ensureDataDirExist();
+    File dbDir = new File(".", path);
+    if (dbDir.exists()) {
+      return;
+    }
+    initColumnFamilies(path);
+  }
+
+  private void ensureDataDirExist() {
+    File dataDir = new File(".", "data");
+    if (dataDir.exists()) {
+      return;
+    }
+    dataDir.mkdirs();
+  }
+
+  private void initColumnFamilies(String path) {
+    try (final Options opts = new Options().setCreateIfMissing(true);
+         final RocksDB db = RocksDB.open(opts, path)) {
+
+      // create column family
+      db.createColumnFamily(COLUMN_FAMILY_SENT);
+      db.createColumnFamily(COLUMN_FAMILY_ACKED);
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
     }
   }
 
-  private void initHandlers(List<ColumnFamilyHandle> handles) {
+  private void open(String path, int ttl) {
+    try {
+      List<ColumnFamilyHandle> handles = new ArrayList<>();
+      List<Integer> ttls = Lists.newArrayList(ttl, ttl, ttl);
+      db = TtlDB.open(options, path, COLUMN_FAMILY_DESCRIPTORS, handles, ttls, false);
+      initHandlerMap(handles);
+    } catch (RocksDBException e) {
+      throw new MessageCacheException(e.getMessage(), e);
+    }
+  }
+
+  private void initHandlerMap(List<ColumnFamilyHandle> handles) {
     for (int i = 0; i < handles.size(); i++) {
-      columnFamilyHandles.put(COLUMN_FAMILY_DESCRIPTORS.get(i), handles.get(i));
+      ColumnFamilyDescriptor descriptor = COLUMN_FAMILY_DESCRIPTORS.get(i);
+      columnFamilyHandles.put(descriptor, handles.get(i));
+    }
+  }
+
+  private void createColumnFamilyHandle(ColumnFamilyDescriptor descriptor) {
+    try {
+      db.createColumnFamily(descriptor);
+    } catch (RocksDBException e) {
+      throw new MessageCacheException(e.getMessage(), e);
     }
   }
 
@@ -94,7 +137,7 @@ public class MessageCache {
     LOGGER.debug("size: {}", batch.count());
     try {
       db.write(writeOptions, batch);
-      writeBatches.clear();
+      writeBatches.values().forEach(WriteBatch::clear);
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
     }
@@ -129,6 +172,17 @@ public class MessageCache {
 
   public void remove(ColumnFamilyDescriptor family, String key) {
     writeBatches.get(family).remove(key.getBytes());
+  }
+
+  public void debug() {
+    try {
+      RocksIterator iterator = db.newIterator();
+      for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+        System.out.println(new String(iterator.key()) + " -> " + new String(iterator.value()));
+      }
+    } catch (Exception e) {
+      LOGGER.error(e.getMessage(), e);
+    }
   }
 
   public void markAsSent(String key, String value) {
