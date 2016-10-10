@@ -106,14 +106,6 @@ public class MessageCache {
     }
   }
 
-  private void createColumnFamilyHandle(ColumnFamilyDescriptor descriptor) {
-    try {
-      db.createColumnFamily(descriptor);
-    } catch (RocksDBException e) {
-      throw new MessageCacheException(e.getMessage(), e);
-    }
-  }
-
   private void initBatchThread() {
     Timer timer = new Timer(true);
     timer.scheduleAtFixedRate(new TimerTask() {
@@ -175,14 +167,16 @@ public class MessageCache {
   }
 
   public void debug() {
+    LOGGER.debug("debug start...");
     try {
       RocksIterator iterator = db.newIterator();
       for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
-        System.out.println(new String(iterator.key()) + " -> " + new String(iterator.value()));
+        LOGGER.debug(new String(iterator.key()) + " -> " + new String(iterator.value()));
       }
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     }
+    LOGGER.debug("debug stop.");
   }
 
   public void markAsSent(String key, String value) {
