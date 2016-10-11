@@ -3,12 +3,15 @@ package com.orctom.pipeline.utils;
 import com.orctom.pipeline.model.MessageEntry;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.RocksIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -53,57 +56,124 @@ public class MessageCacheTest {
   }
 
   private int loop() {
-    LOGGER.info("looping...");
-    RocksIterator iterator = cache.iterator(cache.CF_DEFAULT);
+    return loop(cache.CF_DEFAULT);
+  }
+
+  private int loop(ColumnFamilyDescriptor descriptor) {
+    RocksIterator iterator = cache.iterator(descriptor);
     int count = 0;
     for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
       count++;
       LOGGER.trace(new String(iterator.key()) + " -> " + new String(iterator.value()));
     }
-    LOGGER.info("count = {}", count);
+    LOGGER.info("count = {}, {}", count, new String(descriptor.columnFamilyName()));
     return count;
   }
 
   @Test
-  public void testMessageCache() {
-    Thread addThread = new Thread() {
+  public void testMessageProcessing() {
+    int total = 100_000;
+    CountDownLatch latch = new CountDownLatch(1);
+    Thread addingThread = new Thread() {
       @Override
       public void run() {
-        for (int i = 0; i < 1_000; i++) {
+        LOGGER.debug("adding thread started.");
+        int count = 0;
+        for (int i = 0; i < total; i++) {
           String key = String.valueOf(i) + "_" + RandomStringUtils.randomAlphanumeric(8);
           String value = RandomStringUtils.randomAlphanumeric(300);
           cache.add(key, value);
-          sleepForAWhile();
+          sleepFor(RandomUtils.nextInt(0, 3));
+          count++;
         }
+        LOGGER.debug("adding thread stopped. {}", count);
+        latch.countDown();
       }
     };
-    Thread workerThread = new Thread() {
+    Thread sendingThread = new Thread() {
       @Override
       public void run() {
-        for (int i = 0; i < 1_000; i++) {
-          MessageEntry msg = cache.get();
-          if (null == msg) {
-            LOGGER.info("emtpy message");
-            continue;
+        LOGGER.debug("sending thread started.");
+        int loop = 5;
+        int count = 0;
+        while (loop > 0) {
+          RocksIterator iterator = cache.iterator(cache.CF_DEFAULT);
+          for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+            String key = new String(iterator.key());
+            String value = new String(iterator.value());
+            process(key, value);
+            cache.markAsSent(key, value);
+            count++;
           }
-          process(msg.getKey(), msg.getValue());
-          cache.markAsSent(msg.getKey(), msg.getValue());
+
+          sleepFor(MessageCache.PERSIST_PERIOD);
+          if (latch.getCount() == 0) {
+            loop--;
+          }
         }
+        LOGGER.debug("sending thread stopped. {}", count);
       }
     };
-    addThread.start();
-    workerThread.start();
-    cache.debug();
-    sleepForAWhile();
-    cache.debug();
-    sleepForAWhile();
-    cache.debug();
-    sleepForAWhile();
-    cache.debug();
-    sleepForAWhile();
-    cache.debug();
-    sleepForAWhile();
-    cache.debug();
+    Thread ackThread = new Thread() {
+      @Override
+      public void run() {
+        LOGGER.debug("ack thread started.");
+        int loop = 10;
+        int count = 0;
+        while (loop > 0) {
+          RocksIterator iterator = cache.iterator(cache.CF_SENT);
+          for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+            String key = new String(iterator.key());
+            String value = new String(iterator.value());
+            process(key, value);
+            cache.markAsAcked(key, value);
+            count++;
+          }
+
+          sleepFor(MessageCache.PERSIST_PERIOD);
+          if (latch.getCount() == 0) {
+            loop--;
+          }
+        }
+        LOGGER.debug("ack thread stopped. {}", count);
+      }
+    };
+    addingThread.start();
+    sleepFor(MessageCache.PERSIST_PERIOD);
+    sendingThread.start();
+    sleepFor(MessageCache.PERSIST_PERIOD);
+    ackThread.start();
+
+    try {
+      addingThread.join();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    loop(cache.CF_DEFAULT);
+    loop(cache.CF_SENT);
+    loop(cache.CF_ACKED);
+
+    try {
+      sendingThread.join();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    loop(cache.CF_DEFAULT);
+    loop(cache.CF_SENT);
+    loop(cache.CF_ACKED);
+
+    try {
+      ackThread.join();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    sleepFor(3 * 1000);
+    loop(cache.CF_DEFAULT);
+    loop(cache.CF_SENT);
+    loop(cache.CF_ACKED);
   }
 
   private void sleepForAWhile() {
@@ -118,6 +188,6 @@ public class MessageCacheTest {
   }
 
   private void process(String key, String value) {
-    LOGGER.info("processing: {} -> {}", key, value);
+    LOGGER.trace("processing: {} -> {}", key, value);
   }
 }

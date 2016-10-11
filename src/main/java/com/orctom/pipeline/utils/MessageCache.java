@@ -1,18 +1,16 @@
 package com.orctom.pipeline.utils;
 
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.MapMaker;
-import com.google.common.collect.Maps;
 import com.orctom.pipeline.exception.MessageCacheException;
-import com.orctom.pipeline.model.MessageEntry;
 import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Local cache for the messages
@@ -24,6 +22,10 @@ public class MessageCache {
 
   public static final int PERSIST_DELAY = 0;
   public static final int PERSIST_PERIOD = 1000;
+
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+  private ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
+  private ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
 
   public final ColumnFamilyDescriptor CF_DEFAULT = new ColumnFamilyDescriptor(
       RocksDB.DEFAULT_COLUMN_FAMILY,
@@ -42,7 +44,7 @@ public class MessageCache {
       CF_DEFAULT, CF_SENT, CF_ACKED
   );
 
-  private Map<ColumnFamilyDescriptor, WriteBatch> writeBatches = Maps.newConcurrentMap();
+  private Map<ColumnFamilyDescriptor, WriteBatch> writeBatches = new ConcurrentHashMap<>();
 
   private Map<ColumnFamilyDescriptor, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
 
@@ -121,14 +123,19 @@ public class MessageCache {
   }
 
   private void initBatchThread() {
-    Timer timer = new Timer(true);
+    Timer timer = new Timer(false);
     timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
         LOGGER.info("Writing batch...");
-        for (ColumnFamilyDescriptor descriptor : COLUMN_FAMILY_DESCRIPTORS) {
-          WriteBatch writeBatch = writeBatches.put(descriptor, new WriteBatch());
-          persist(writeBatch);
+        writeLock.lock();
+        try {
+          for (ColumnFamilyDescriptor descriptor : COLUMN_FAMILY_DESCRIPTORS) {
+            WriteBatch writeBatch = writeBatches.put(descriptor, new WriteBatch());
+            persist(writeBatch);
+          }
+        } finally {
+          writeLock.unlock();
         }
       }
     }, PERSIST_DELAY, PERSIST_PERIOD);
@@ -141,13 +148,11 @@ public class MessageCache {
       return;
     }
 
-    LOGGER.debug("batch size: {}", size);
-
     try {
       Stopwatch stopwatch = Stopwatch.createStarted();
       db.write(writeOptions, batch);
       stopwatch.stop();
-      LOGGER.info(stopwatch.toString());
+      LOGGER.debug("batch size: {}, {}", size, stopwatch);
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
     }
@@ -170,22 +175,14 @@ public class MessageCache {
   }
 
   public String get(ColumnFamilyDescriptor descriptor, String key) {
+    readLock.lock();
     try {
       return new String(db.get(getColumnFamilyHandle(descriptor), key.getBytes()));
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
+    } finally {
+      readLock.unlock();
     }
-  }
-
-  public MessageEntry get() {
-    return get(CF_DEFAULT);
-  }
-
-  public MessageEntry get(ColumnFamilyDescriptor descriptor) {
-    RocksIterator iterator = iterator(descriptor);
-    iterator.seekToFirst();
-    iterator.next();
-    return iterator.isValid() ? new MessageEntry(iterator.key(), iterator.value()) : null;
   }
 
   public RocksIterator iterator() {
@@ -193,32 +190,52 @@ public class MessageCache {
   }
 
   public RocksIterator iterator(ColumnFamilyDescriptor descriptor) {
-    return db.newIterator(getColumnFamilyHandle(descriptor));
+    readLock.lock();
+    try {
+      return db.newIterator(getColumnFamilyHandle(descriptor));
+    } finally {
+      readLock.unlock();
+    }
   }
 
   public void add(String key, String value) {
     add(CF_DEFAULT, key, value);
   }
 
-  public void add(ColumnFamilyDescriptor family, String key, String value) {
-    writeBatches.get(family).put(key.getBytes(), value.getBytes());
+  public void add(ColumnFamilyDescriptor descriptor, String key, String value) {
+    readLock.lock();
+    try {
+      writeBatches.get(descriptor).put(getColumnFamilyHandle(descriptor), key.getBytes(), value.getBytes());
+    } finally {
+      readLock.unlock();
+    }
   }
 
   public boolean isDuplicated(String key) {
-    byte[] keyBytes = key.getBytes();
-    StringBuffer buffer = new StringBuffer();
-    for (ColumnFamilyHandle handle : columnFamilyHandles.values()) {
-      boolean exist = db.keyMayExist(handle, keyBytes, buffer);
-      if (exist) {
-        return true;
+    readLock.lock();
+    try {
+      byte[] keyBytes = key.getBytes();
+      StringBuffer buffer = new StringBuffer();
+      for (ColumnFamilyHandle handle : columnFamilyHandles.values()) {
+        boolean exist = db.keyMayExist(handle, keyBytes, buffer);
+        if (exist) {
+          return true;
+        }
       }
-    }
 
-    return false;
+      return false;
+    } finally {
+      readLock.unlock();
+    }
   }
 
-  public void remove(ColumnFamilyDescriptor family, String key) {
-    writeBatches.get(family).remove(key.getBytes());
+  public void remove(ColumnFamilyDescriptor descriptor, String key) {
+    readLock.lock();
+    try {
+      writeBatches.get(descriptor).remove(getColumnFamilyHandle(descriptor), key.getBytes());
+    } finally {
+      readLock.unlock();
+    }
   }
 
   public void clearData(ColumnFamilyDescriptor descriptor) {
@@ -236,27 +253,28 @@ public class MessageCache {
     return columnFamilyHandles.get(descriptor);
   }
 
-  public void debug() {
+  public void debug(ColumnFamilyDescriptor descriptor) {
     LOGGER.debug("debug start...");
+    readLock.lock();
     try {
-      RocksIterator iterator = db.newIterator();
+      RocksIterator iterator = db.newIterator(getColumnFamilyHandle(descriptor));
       for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
         LOGGER.debug(new String(iterator.key()) + " -> " + new String(iterator.value()));
       }
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
+    } finally {
+      readLock.unlock();
     }
     LOGGER.debug("debug stop.");
   }
 
   public void markAsSent(String key, String value) {
-    LOGGER.debug("mark as sent: {}", key);
     remove(CF_DEFAULT, key);
     add(CF_SENT, key, value);
   }
 
   public void markAsAcked(String key, String value) {
-    LOGGER.debug("mark as acked: {}", key);
     remove(CF_SENT, key);
     add(CF_ACKED, key, value);
   }
