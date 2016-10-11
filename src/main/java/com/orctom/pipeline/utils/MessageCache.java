@@ -1,7 +1,10 @@
 package com.orctom.pipeline.utils;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.MapMaker;
+import com.google.common.collect.Maps;
 import com.orctom.pipeline.exception.MessageCacheException;
 import com.orctom.pipeline.model.MessageEntry;
 import org.rocksdb.*;
@@ -19,28 +22,27 @@ public class MessageCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageCache.class);
 
-  public static final ColumnFamilyDescriptor CF_DEFAULT = new ColumnFamilyDescriptor(
+  public static final int PERSIST_DELAY = 0;
+  public static final int PERSIST_PERIOD = 1000;
+
+  public final ColumnFamilyDescriptor CF_DEFAULT = new ColumnFamilyDescriptor(
       RocksDB.DEFAULT_COLUMN_FAMILY,
       createColumnFamilyOptions()
   );
-  public static final ColumnFamilyDescriptor CF_SENT = new ColumnFamilyDescriptor(
+  public final ColumnFamilyDescriptor CF_SENT = new ColumnFamilyDescriptor(
       "sent".getBytes(),
       createColumnFamilyOptions()
   );
-  public static final ColumnFamilyDescriptor CF_ACKED = new ColumnFamilyDescriptor(
+  public final ColumnFamilyDescriptor CF_ACKED = new ColumnFamilyDescriptor(
       "acknowledged".getBytes(),
       createColumnFamilyOptions()
   );
 
-  private static final List<ColumnFamilyDescriptor> COLUMN_FAMILY_DESCRIPTORS = Lists.newArrayList(
+  private final List<ColumnFamilyDescriptor> COLUMN_FAMILY_DESCRIPTORS = Lists.newArrayList(
       CF_DEFAULT, CF_SENT, CF_ACKED
   );
 
-  private Map<ColumnFamilyDescriptor, WriteBatch> writeBatches = ImmutableMap.of(
-      CF_DEFAULT, new WriteBatch(),
-      CF_SENT, new WriteBatch(),
-      CF_ACKED, new WriteBatch()
-  );
+  private Map<ColumnFamilyDescriptor, WriteBatch> writeBatches = Maps.newConcurrentMap();
 
   private Map<ColumnFamilyDescriptor, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
 
@@ -56,10 +58,11 @@ public class MessageCache {
     String path = "data/" + id;
     initDB(path);
     open(path, ttl);
+    initBatches();
     initBatchThread();
   }
 
-  private static ColumnFamilyOptions createColumnFamilyOptions() {
+  private ColumnFamilyOptions createColumnFamilyOptions() {
     return new ColumnFamilyOptions().setTableFormatConfig(
         new BlockBasedTableConfig().setFilter(new BloomFilter())
     );
@@ -67,11 +70,11 @@ public class MessageCache {
 
   private void initDB(String path) {
     ensureDataDirExist();
-    File dbDir = new File(".", path);
-    if (dbDir.exists()) {
-      return;
+    try {
+      initColumnFamilies(path);
+    } catch (RocksDBException ignored) {
+      // extra column families exist, continue open the db in column family approach.
     }
-    initColumnFamilies(path);
   }
 
   private void ensureDataDirExist() {
@@ -79,26 +82,25 @@ public class MessageCache {
     if (dataDir.exists()) {
       return;
     }
-    dataDir.mkdirs();
+    boolean created = dataDir.mkdirs();
+    LOGGER.trace("ensuring data dir existence, created: {}", created);
   }
 
-  private void initColumnFamilies(String path) {
+  private void initColumnFamilies(String path) throws RocksDBException {
     try (final Options opts = new Options().setCreateIfMissing(true);
          final RocksDB db = RocksDB.open(opts, path)) {
 
-      // create column family
+      // creating column families
       db.createColumnFamily(CF_SENT);
       db.createColumnFamily(CF_ACKED);
-    } catch (RocksDBException e) {
-      throw new MessageCacheException(e.getMessage(), e);
     }
   }
 
   private void open(String path, int ttl) {
     try {
       List<ColumnFamilyHandle> handles = new ArrayList<>();
-      List<Integer> ttls = Lists.newArrayList(ttl, ttl, ttl);
-      db = TtlDB.open(options, path, COLUMN_FAMILY_DESCRIPTORS, handles, ttls, false);
+      List<Integer> ttlList = Lists.newArrayList(ttl, ttl, ttl);
+      db = TtlDB.open(options, path, COLUMN_FAMILY_DESCRIPTORS, handles, ttlList, false);
       initHandlerMap(handles);
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
@@ -112,15 +114,43 @@ public class MessageCache {
     }
   }
 
+  private void initBatches() {
+    for (ColumnFamilyDescriptor descriptor : COLUMN_FAMILY_DESCRIPTORS) {
+      writeBatches.put(descriptor, new WriteBatch());
+    }
+  }
+
   private void initBatchThread() {
     Timer timer = new Timer(true);
     timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
         LOGGER.info("Writing batch...");
-        writeBatches.values().forEach(MessageCache.this::persist);
+        for (ColumnFamilyDescriptor descriptor : COLUMN_FAMILY_DESCRIPTORS) {
+          WriteBatch writeBatch = writeBatches.put(descriptor, new WriteBatch());
+          persist(writeBatch);
+        }
       }
-    }, 0, 1000);
+    }, PERSIST_DELAY, PERSIST_PERIOD);
+  }
+
+  private void persist(WriteBatch batch) {
+    int size = batch.count();
+    if (0 == size) {
+      LOGGER.debug("batch size: 0, skipped.");
+      return;
+    }
+
+    LOGGER.debug("batch size: {}", size);
+
+    try {
+      Stopwatch stopwatch = Stopwatch.createStarted();
+      db.write(writeOptions, batch);
+      stopwatch.stop();
+      LOGGER.info(stopwatch.toString());
+    } catch (RocksDBException e) {
+      throw new MessageCacheException(e.getMessage(), e);
+    }
   }
 
   public void close() {
@@ -131,33 +161,39 @@ public class MessageCache {
     }
   }
 
-  private void persist(WriteBatch batch) {
-    LOGGER.debug("size: {}", batch.count());
+  public void dropColumnFamily(ColumnFamilyHandle handle) {
     try {
-      db.write(writeOptions, batch);
-      writeBatches.values().forEach(WriteBatch::clear);
+      db.dropColumnFamily(handle);
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
     }
   }
 
-  public String get(ColumnFamilyDescriptor family, String key) {
+  public String get(ColumnFamilyDescriptor descriptor, String key) {
     try {
-      return new String(db.get(columnFamilyHandles.get(family), key.getBytes()));
+      return new String(db.get(getColumnFamilyHandle(descriptor), key.getBytes()));
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
     }
   }
 
   public MessageEntry get() {
-    RocksIterator iterator = iterator();
+    return get(CF_DEFAULT);
+  }
+
+  public MessageEntry get(ColumnFamilyDescriptor descriptor) {
+    RocksIterator iterator = iterator(descriptor);
     iterator.seekToFirst();
     iterator.next();
     return iterator.isValid() ? new MessageEntry(iterator.key(), iterator.value()) : null;
   }
 
   public RocksIterator iterator() {
-    return db.newIterator();
+    return iterator(CF_DEFAULT);
+  }
+
+  public RocksIterator iterator(ColumnFamilyDescriptor descriptor) {
+    return db.newIterator(getColumnFamilyHandle(descriptor));
   }
 
   public void add(String key, String value) {
@@ -183,6 +219,21 @@ public class MessageCache {
 
   public void remove(ColumnFamilyDescriptor family, String key) {
     writeBatches.get(family).remove(key.getBytes());
+  }
+
+  public void clearData(ColumnFamilyDescriptor descriptor) {
+    RocksIterator iterator = iterator(descriptor);
+    try {
+      for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+        db.remove(getColumnFamilyHandle(descriptor), iterator.key());
+      }
+    } catch (RocksDBException e) {
+      LOGGER.error(e.getMessage(), e);
+    }
+  }
+
+  private ColumnFamilyHandle getColumnFamilyHandle(ColumnFamilyDescriptor descriptor) {
+    return columnFamilyHandles.get(descriptor);
   }
 
   public void debug() {
