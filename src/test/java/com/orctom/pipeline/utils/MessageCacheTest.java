@@ -6,6 +6,7 @@ import org.apache.commons.lang3.RandomUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.rocksdb.RocksIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,30 @@ public class MessageCacheTest {
     if (null != cache) {
       cache.close();
     }
+  }
+
+  @Test
+  public void testSave() {
+    for (int i = 0; i < 1_000; i++) {
+      String key = String.valueOf(i) + "_" + RandomStringUtils.randomAlphanumeric(8);
+      String value = RandomStringUtils.randomAlphanumeric(300);
+      cache.add(key, value);
+      LOGGER.info("added {}: {} -> {}", i, key, value);
+    }
+    sleepFor(1000*5);
+    loop();
+    sleepFor(1000*10);
+  }
+
+  private void loop() {
+    LOGGER.info("looping...");
+    RocksIterator iterator = cache.iterator();
+    int count = 0;
+    for (iterator.seekToFirst(); iterator.isValid(); iterator.next()) {
+      count++;
+      LOGGER.info(new String(iterator.key()) + " -> " + new String(iterator.value()));
+    }
+    LOGGER.info("count = {}", count);
   }
 
   @Test
@@ -76,8 +101,12 @@ public class MessageCacheTest {
   }
 
   private void sleepForAWhile() {
+    sleepFor(RandomUtils.nextInt(1, 500));
+  }
+
+  private void sleepFor(int milliseconds) {
     try {
-      TimeUnit.MILLISECONDS.sleep(RandomUtils.nextInt(1, 500));
+      TimeUnit.MILLISECONDS.sleep(milliseconds);
     } catch (InterruptedException ignored) {
     }
   }

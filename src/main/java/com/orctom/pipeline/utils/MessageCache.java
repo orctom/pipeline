@@ -19,27 +19,27 @@ public class MessageCache {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageCache.class);
 
-  private static final ColumnFamilyDescriptor COLUMN_FAMILY_DEFAULT = new ColumnFamilyDescriptor(
+  public static final ColumnFamilyDescriptor CF_DEFAULT = new ColumnFamilyDescriptor(
       RocksDB.DEFAULT_COLUMN_FAMILY,
-      new ColumnFamilyOptions()
+      createColumnFamilyOptions()
   );
-  private static final ColumnFamilyDescriptor COLUMN_FAMILY_SENT = new ColumnFamilyDescriptor(
+  public static final ColumnFamilyDescriptor CF_SENT = new ColumnFamilyDescriptor(
       "sent".getBytes(),
-      new ColumnFamilyOptions()
+      createColumnFamilyOptions()
   );
-  private static final ColumnFamilyDescriptor COLUMN_FAMILY_ACKED = new ColumnFamilyDescriptor(
+  public static final ColumnFamilyDescriptor CF_ACKED = new ColumnFamilyDescriptor(
       "acknowledged".getBytes(),
-      new ColumnFamilyOptions()
+      createColumnFamilyOptions()
   );
 
   private static final List<ColumnFamilyDescriptor> COLUMN_FAMILY_DESCRIPTORS = Lists.newArrayList(
-      COLUMN_FAMILY_DEFAULT, COLUMN_FAMILY_SENT, COLUMN_FAMILY_ACKED
+      CF_DEFAULT, CF_SENT, CF_ACKED
   );
 
   private Map<ColumnFamilyDescriptor, WriteBatch> writeBatches = ImmutableMap.of(
-      COLUMN_FAMILY_DEFAULT, new WriteBatch(),
-      COLUMN_FAMILY_SENT, new WriteBatch(),
-      COLUMN_FAMILY_ACKED, new WriteBatch()
+      CF_DEFAULT, new WriteBatch(),
+      CF_SENT, new WriteBatch(),
+      CF_ACKED, new WriteBatch()
   );
 
   private Map<ColumnFamilyDescriptor, ColumnFamilyHandle> columnFamilyHandles = new HashMap<>();
@@ -57,6 +57,12 @@ public class MessageCache {
     initDB(path);
     open(path, ttl);
     initBatchThread();
+  }
+
+  private static ColumnFamilyOptions createColumnFamilyOptions() {
+    return new ColumnFamilyOptions().setTableFormatConfig(
+        new BlockBasedTableConfig().setFilter(new BloomFilter())
+    );
   }
 
   private void initDB(String path) {
@@ -81,8 +87,8 @@ public class MessageCache {
          final RocksDB db = RocksDB.open(opts, path)) {
 
       // create column family
-      db.createColumnFamily(COLUMN_FAMILY_SENT);
-      db.createColumnFamily(COLUMN_FAMILY_ACKED);
+      db.createColumnFamily(CF_SENT);
+      db.createColumnFamily(CF_ACKED);
     } catch (RocksDBException e) {
       throw new MessageCacheException(e.getMessage(), e);
     }
@@ -144,22 +150,35 @@ public class MessageCache {
   }
 
   public MessageEntry get() {
-    RocksIterator iterator = db.newIterator();
+    RocksIterator iterator = iterator();
     iterator.seekToFirst();
     iterator.next();
     return iterator.isValid() ? new MessageEntry(iterator.key(), iterator.value()) : null;
   }
 
+  public RocksIterator iterator() {
+    return db.newIterator();
+  }
+
   public void add(String key, String value) {
-    add(COLUMN_FAMILY_DEFAULT, key, value);
+    add(CF_DEFAULT, key, value);
   }
 
   public void add(ColumnFamilyDescriptor family, String key, String value) {
     writeBatches.get(family).put(key.getBytes(), value.getBytes());
   }
 
-  public void isDuplicated(String key) {
-    // TODO
+  public boolean isDuplicated(String key) {
+    byte[] keyBytes = key.getBytes();
+    StringBuffer buffer = new StringBuffer();
+    for (ColumnFamilyHandle handle : columnFamilyHandles.values()) {
+      boolean exist = db.keyMayExist(handle, keyBytes, buffer);
+      if (exist) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   public void remove(ColumnFamilyDescriptor family, String key) {
@@ -181,13 +200,13 @@ public class MessageCache {
 
   public void markAsSent(String key, String value) {
     LOGGER.debug("mark as sent: {}", key);
-    remove(COLUMN_FAMILY_DEFAULT, key);
-    add(COLUMN_FAMILY_SENT, key, value);
+    remove(CF_DEFAULT, key);
+    add(CF_SENT, key, value);
   }
 
   public void markAsAcked(String key, String value) {
     LOGGER.debug("mark as acked: {}", key);
-    remove(COLUMN_FAMILY_SENT, key);
-    add(COLUMN_FAMILY_ACKED, key, value);
+    remove(CF_SENT, key);
+    add(CF_ACKED, key, value);
   }
 }
