@@ -1,6 +1,6 @@
 package com.orctom.pipeline.model;
 
-import com.orctom.pipeline.utils.IdUtils;
+import com.orctom.pipeline.util.IdUtils;
 
 import java.io.Serializable;
 

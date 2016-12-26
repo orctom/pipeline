@@ -1,8 +1,8 @@
-package com.orctom.pipeline;
+package com.orctom.pipeline.sample;
 
+import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.model.Message;
 import com.orctom.pipeline.precedure.Outlet;
-import com.orctom.pipeline.utils.SimpleMetrics;
 
 import java.util.concurrent.TimeUnit;
 

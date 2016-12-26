@@ -1,4 +1,4 @@
-package com.orctom.pipeline;
+package com.orctom.pipeline.sample;
 
 public class DummyTest {
 

@@ -1,4 +1,6 @@
-package com.orctom.pipeline;
+package com.orctom.pipeline.sample;
+
+import com.orctom.pipeline.Bootstrap;
 
 public class RoleBMain {
 

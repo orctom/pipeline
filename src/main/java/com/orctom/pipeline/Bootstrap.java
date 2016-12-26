@@ -8,9 +8,8 @@ import akka.cluster.Cluster;
 import akka.cluster.seed.ZookeeperClusterSeed;
 import com.google.common.collect.Sets;
 import com.orctom.pipeline.model.LocalActors;
-import com.orctom.pipeline.utils.IdUtils;
+import com.orctom.pipeline.util.IdUtils;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,9 +26,8 @@ public class Bootstrap {
   private static final Logger LOGGER = LoggerFactory.getLogger(Bootstrap.class);
 
   protected String role;
-  protected final ActorSystem system;
-  protected ActorRef windtalker;
-  protected Set<String> predecessors;
+  private final ActorSystem system;
+  private Set<String> predecessors;
 
   private List<ActorRef> actors = new ArrayList<>();
 
@@ -50,7 +48,7 @@ public class Bootstrap {
     start(null);
   }
 
-  public void start(final Runnable onUpCallback) {
+  private void start(final Runnable onUpCallback) {
     new ZookeeperClusterSeed((ExtendedActorSystem) system).join();
 
     Cluster.get(system).registerOnMemberUp(new Runnable() {
@@ -67,7 +65,7 @@ public class Bootstrap {
   }
 
   private void onStartup() {
-    windtalker = system.actorOf(Props.create(Windtalker.class, predecessors), Windtalker.NAME);
+    ActorRef windtalker = system.actorOf(Props.create(Windtalker.class, predecessors), Windtalker.NAME);
     windtalker.tell(new LocalActors(role, actors), ActorRef.noSender());
     LOGGER.debug("Bootstrap started.");
   }
@@ -89,7 +87,7 @@ public class Bootstrap {
     });
   }
 
-  protected void onRemoved() {
+  private void onRemoved() {
     LOGGER.debug("{} get removed", getClass());
   }
 }

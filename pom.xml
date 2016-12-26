@@ -16,6 +16,8 @@
     <java.version>1.8</java.version>
     <curator.version>2.9.1</curator.version>
     <akka.version>2.4.11</akka.version>
+    <laputa.version>1.0-SNAPSHOT</laputa.version>
+    <rmq.version>1.0-SNAPSHOT</rmq.version>
   </properties>
 
   <dependencies>
@@ -40,12 +42,6 @@
         </exclusion>
       </exclusions>
       <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.reactivestreams</groupId>
-      <artifactId>reactive-streams</artifactId>
-      <version>1.0.0</version>
     </dependency>
 
     <dependency>
@@ -96,9 +92,14 @@
     </dependency>
 
     <dependency>
-      <groupId>org.rocksdb</groupId>
-      <artifactId>rocksdbjni</artifactId>
-      <version>4.11.2</version>
+      <groupId>com.orctom.laputa</groupId>
+      <artifactId>laputa-utils</artifactId>
+      <version>${laputa.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.orctom</groupId>
+      <artifactId>rmq</artifactId>
+      <version>${rmq.version}</version>
     </dependency>
 
     <dependency>
@@ -117,12 +118,6 @@
       <artifactId>commons-lang3</artifactId>
       <version>3.4</version>
       <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>com.e6wifi.scaffold</groupId>
-      <artifactId>scaffold-utils</artifactId>
-      <version>1.0-SNAPSHOT</version>
     </dependency>
 
     <dependency>

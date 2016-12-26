@@ -1,4 +1,6 @@
-package com.orctom.pipeline.utils;
+package com.orctom.pipeline.util;
+
+import com.orctom.laputa.utils.IdGenerator;
 
 /**
  * Unsafe GENERATOR, as it could generate same IDs on different host.

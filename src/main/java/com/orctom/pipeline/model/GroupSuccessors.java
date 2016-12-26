@@ -22,7 +22,7 @@ public class GroupSuccessors {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(GroupSuccessors.class);
 
-  private static final int THROTTLE_RATE = 5000;
+  private static final int THROTTLE_RATE = 10_000;
 
   private AtomicLong next = new AtomicLong();
   private List<ActorRef> successors = new ArrayList<>();

@@ -3,16 +3,15 @@ package com.orctom.pipeline.precedure;
 import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
+import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.model.GroupSuccessors;
 import com.orctom.pipeline.model.Message;
 import com.orctom.pipeline.model.RemoteActors;
 import com.orctom.pipeline.model.Successors;
-import com.orctom.pipeline.utils.SimpleMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -45,14 +44,11 @@ public abstract class Pipe extends UntypedActor {
   }
 
   private void logSuccessors() {
-    metrics.gauge("routee", new Callable<Integer>() {
-      @Override
-      public Integer call() throws Exception {
-        if (logger.isTraceEnabled()) {
-          logger.trace(successors.toString());
-        }
-        return successors.size();
+    metrics.gauge("routee", () -> {
+      if (logger.isTraceEnabled()) {
+        logger.trace(successors.toString());
       }
+      return successors.size();
     });
   }
 

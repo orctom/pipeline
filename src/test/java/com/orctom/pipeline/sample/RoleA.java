@@ -1,7 +1,7 @@
-package com.orctom.pipeline;
+package com.orctom.pipeline.sample;
 
+import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.precedure.Hydrant;
-import com.orctom.pipeline.utils.SimpleMetrics;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.concurrent.ExecutorService;
@@ -19,19 +19,16 @@ public class RoleA extends Hydrant {
     int noOfWorkers = 1;
     ExecutorService es = Executors.newFixedThreadPool(noOfWorkers);
     for (int i = 0; i < noOfWorkers; i++) {
-      es.submit(new Runnable() {
-        @Override
-        public void run() {
-          while (!Thread.currentThread().isInterrupted()) {
-            DummyMessage msg = new DummyMessage(RandomStringUtils.randomAlphanumeric(400));
-            sendToSuccessors(msg);
+      es.submit(() -> {
+        while (!Thread.currentThread().isInterrupted()) {
+          DummyMessage msg = new DummyMessage(RandomStringUtils.randomAlphanumeric(400));
+          sendToSuccessors(msg);
 //            try {
 //              TimeUnit.SECONDS.sleep(5);
 //            } catch (InterruptedException e) {
 //              e.printStackTrace();
 //            }
-            metrics.mark(KEY);
-          }
+          metrics.mark(KEY);
         }
       });
     }

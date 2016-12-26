@@ -1,4 +1,4 @@
-package com.orctom.pipeline;
+package com.orctom.pipeline.sample;
 
 import com.orctom.pipeline.model.Message;
 
