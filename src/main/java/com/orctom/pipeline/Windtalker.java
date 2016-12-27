@@ -23,17 +23,17 @@ import java.util.concurrent.*;
  * Represents a node in the cluster.
  * Created by hao on 8/15/16.
  */
-public class Windtalker extends UntypedActor {
+class Windtalker extends UntypedActor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Windtalker.class);
 
-  public static final String NAME = "windtalker";
+  static final String NAME = "windtalker";
 
   private Cluster cluster = Cluster.get(getContext().system());
 
   private LocalActors localActors;
 
-  protected Set<String> predecessors;
+  private Set<String> predecessors;
 
   private Map<Long, MessageCache<ActorSelection, RemoteActors>> windtalkerMessages = new ConcurrentHashMap<>();
   private ScheduledFuture<?> scheduled;
@@ -60,7 +60,7 @@ public class Windtalker extends UntypedActor {
     cluster.unsubscribe(getSelf());
   }
 
-  protected boolean hasPredecessors() {
+  private boolean hasPredecessors() {
     return null != predecessors && !predecessors.isEmpty();
   }
 
@@ -120,6 +120,7 @@ public class Windtalker extends UntypedActor {
     for (String role : predecessors) {
       if (member.hasRole(role)) {
         notifyPredecessor(member);
+        return;
       }
     }
   }

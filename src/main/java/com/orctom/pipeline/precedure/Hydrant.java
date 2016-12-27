@@ -6,7 +6,7 @@ import com.orctom.pipeline.model.Message;
  * source of stream
  * Created by hao on 7/18/16.
  */
-public abstract class Hydrant extends Pipe {
+public abstract class Hydrant extends PipeActor {
 
   @Override
   protected void started() {

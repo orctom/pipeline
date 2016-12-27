@@ -51,14 +51,11 @@ public class Bootstrap {
   private void start(final Runnable onUpCallback) {
     new ZookeeperClusterSeed((ExtendedActorSystem) system).join();
 
-    Cluster.get(system).registerOnMemberUp(new Runnable() {
-      @Override
-      public void run() {
-        if (null != onUpCallback) {
-          onUpCallback.run();
-        }
-        onStartup();
+    Cluster.get(system).registerOnMemberUp(() -> {
+      if (null != onUpCallback) {
+        onUpCallback.run();
       }
+      onStartup();
     });
 
     registerOnRemoved();
@@ -79,12 +76,7 @@ public class Bootstrap {
   }
 
   private void registerOnRemoved() {
-    Cluster.get(system).registerOnMemberRemoved(new Runnable() {
-      @Override
-      public void run() {
-        onRemoved();
-      }
-    });
+    Cluster.get(system).registerOnMemberRemoved(this::onRemoved);
   }
 
   private void onRemoved() {
