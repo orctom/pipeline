@@ -15,7 +15,7 @@
   <properties>
     <java.version>1.8</java.version>
     <curator.version>2.9.1</curator.version>
-    <akka.version>2.4.11</akka.version>
+    <akka.version>2.4.16</akka.version>
     <laputa.version>1.0-SNAPSHOT</laputa.version>
     <rmq.version>1.0-SNAPSHOT</rmq.version>
   </properties>
