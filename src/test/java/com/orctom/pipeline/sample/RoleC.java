@@ -1,7 +1,7 @@
 package com.orctom.pipeline.sample;
 
 import com.orctom.laputa.utils.SimpleMetrics;
-import com.orctom.pipeline.Bootstrap;
+import com.orctom.pipeline.Pipeline;
 import com.orctom.pipeline.model.Message;
 import com.orctom.pipeline.precedure.Outlet;
 
@@ -21,8 +21,8 @@ class RoleC extends Outlet {
 
   public static void main(String[] args) {
     String cluster = "dummy";
-    final Bootstrap bootstrap = Bootstrap.create(cluster, RoleC.ID, RoleB.ID);
-    bootstrap.createActor(RoleC.ID, RoleC.class);
-    bootstrap.start();
+    final Pipeline pipeline = Pipeline.create(cluster, RoleC.ID, RoleB.ID);
+    pipeline.createActor(RoleC.ID, RoleC.class);
+    pipeline.start();
   }
 }

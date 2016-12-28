@@ -2,9 +2,9 @@ package com.orctom.pipeline.sample;
 
 import akka.actor.Props;
 import com.orctom.laputa.utils.SimpleMetrics;
-import com.orctom.pipeline.Bootstrap;
+import com.orctom.pipeline.Pipeline;
 import com.orctom.pipeline.precedure.Hydrant;
-import com.orctom.pipeline.util.DependencyInjector;
+import com.orctom.pipeline.util.SpringActorProducer;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.concurrent.ExecutorService;
@@ -19,7 +19,7 @@ class RoleA extends Hydrant {
 
   @Override
   protected void run() {
-    Props.create(DependencyInjector.class);
+    Props.create(SpringActorProducer.class);
     int noOfWorkers = 1;
     ExecutorService es = Executors.newFixedThreadPool(noOfWorkers);
     for (int i = 0; i < noOfWorkers; i++) {
@@ -41,8 +41,8 @@ class RoleA extends Hydrant {
 
   public static void main(String[] args) {
     String cluster = "dummy";
-    final Bootstrap bootstrap = Bootstrap.create(cluster, RoleA.ID);
-    bootstrap.createActor(RoleA.ID, RoleA.class);
-    bootstrap.start();
+    final Pipeline pipeline = Pipeline.create(cluster, RoleA.ID);
+    pipeline.createActor(RoleA.ID, RoleA.class);
+    pipeline.start();
   }
 }

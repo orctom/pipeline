@@ -21,9 +21,9 @@ import java.util.Set;
  * Entry to bootstrap the actor
  * Created by chenhao on 8/3/16.
  */
-public class Bootstrap {
+public class Pipeline {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Bootstrap.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(Pipeline.class);
 
   protected String role;
   private final ActorSystem system;
@@ -31,17 +31,17 @@ public class Bootstrap {
 
   private List<ActorRef> actors = new ArrayList<>();
 
-  private Bootstrap(String clusterName, String roleName, Set<String> predecessors) {
+  private Pipeline(ActorSystem system, String roleName, Set<String> predecessors) {
     this.role = roleName;
-    Configurator.init(roleName);
-    Config config = Configurator.getInstance().getConfig();
-    system = ActorSystem.create(clusterName, config);
+    this.system = system;
     this.predecessors = predecessors;
   }
 
-  public static Bootstrap create(String clusterName, String roleName, String... predecessors) {
+  public static Pipeline create(String clusterName, String roleName, String... predecessors) {
     IdUtils.generate();
-    return new Bootstrap(clusterName, roleName, Sets.newHashSet(predecessors));
+    Config config = Configurator.getInstance(roleName).getConfig();
+    ActorSystem system = ActorSystem.create(clusterName, config);
+    return new Pipeline(system, roleName, Sets.newHashSet(predecessors));
   }
 
   public void start() {
