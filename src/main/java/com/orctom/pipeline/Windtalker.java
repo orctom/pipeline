@@ -15,7 +15,9 @@ import com.orctom.pipeline.model.RemoteActors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.*;
 
@@ -32,6 +34,7 @@ class Windtalker extends UntypedActor {
   private Cluster cluster = Cluster.get(getContext().system());
 
   private LocalActors localActors;
+  private Queue<Member> predecessorMembers = new LinkedList<>();
 
   private Set<String> predecessors;
 
@@ -69,6 +72,11 @@ class Windtalker extends UntypedActor {
     if (message instanceof LocalActors) {
       localActors = (LocalActors) message;
       LOGGER.debug("Got a list of local actors: {}.", localActors.getActors());
+      if (!predecessorMembers.isEmpty()) {
+        for (Member member : predecessorMembers) {
+          notifyPredecessor(member);
+        }
+      }
 
     } else if (message instanceof RemoteActors) { // from successors
       RemoteActors remoteActors = (RemoteActors) message;
@@ -104,7 +112,7 @@ class Windtalker extends UntypedActor {
 
   private void informLocalActors(RemoteActors remoteActors) {
     LOGGER.debug(" Informing local actors: {}.", localActors.getActors());
-    if (null == localActors || null == localActors.getActors() || localActors.getActors().isEmpty()) {
+    if (isLocalActorsEmpty()) {
       LOGGER.error("No user actors started.");
       return;
     }
@@ -115,11 +123,19 @@ class Windtalker extends UntypedActor {
     }
   }
 
+  private boolean isLocalActorsEmpty() {
+    return null == localActors || null == localActors.getActors() || localActors.getActors().isEmpty();
+  }
+
   private void registerMember(Member member) {
     LOGGER.debug(" Registering member {}, with roles: {}.", member.address(), member.getRoles());
     for (String role : predecessors) {
       if (member.hasRole(role)) {
-        notifyPredecessor(member);
+        if (isLocalActorsEmpty()) {
+          predecessorMembers.offer(member);
+        } else {
+          notifyPredecessor(member);
+        }
         return;
       }
     }

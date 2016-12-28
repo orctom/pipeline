@@ -122,14 +122,14 @@ public class PipelineApplication {
       try {
         List<Class<?>> classes = ClassUtils.getClassesWithAnnotation(basePackage, Actor.class);
         for (Class<?> clazz : classes) {
-          if (!clazz.isAssignableFrom(UntypedActor.class)) {
+          if (!UntypedActor.class.isAssignableFrom(clazz)) {
             LOGGER.error("{} is not an UntypedActor.", clazz);
             continue;
           }
           ActorRef actor = actorFactory.create((Class<? extends UntypedActor>) clazz);
           register(clazz.getCanonicalName(), actor);
 
-          if (clazz.isAssignableFrom(PipeActor.class)) {
+          if (PipeActor.class.isAssignableFrom(clazz)) {
             LOGGER.info("Found role: {}", clazz);
             actors.add(actor);
           }

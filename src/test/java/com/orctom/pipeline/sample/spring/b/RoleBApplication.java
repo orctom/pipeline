@@ -13,8 +13,9 @@ public class RoleBApplication {
 
   public static void main(String[] args) {
     PipelineApplication.getInstance()
-        .withCluster("role")
+        .withCluster("dummy")
         .withRole("roleB")
+        .withPredecessors("roleA")
         .run(RoleBApplication.class);
   }
 }
