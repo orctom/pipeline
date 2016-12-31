@@ -10,7 +10,7 @@ import com.orctom.laputa.exception.IllegalArgException;
 import com.orctom.laputa.utils.ClassUtils;
 import com.orctom.pipeline.annotation.Actor;
 import com.orctom.pipeline.model.LocalActors;
-import com.orctom.pipeline.precedure.PipeActor;
+import com.orctom.pipeline.precedure.Pipe;
 import com.orctom.pipeline.util.ActorFactory;
 import com.orctom.pipeline.util.IdUtils;
 import com.typesafe.config.Config;
@@ -129,7 +129,7 @@ public class PipelineApplication {
           ActorRef actor = actorFactory.create((Class<? extends UntypedActor>) clazz);
           register(clazz.getCanonicalName(), actor);
 
-          if (PipeActor.class.isAssignableFrom(clazz)) {
+          if (Pipe.class.isAssignableFrom(clazz)) {
             LOGGER.info("Found role: {}", clazz);
             actors.add(actor);
           }

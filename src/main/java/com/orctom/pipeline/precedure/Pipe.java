@@ -36,7 +36,7 @@ public abstract class Pipe extends UntypedActor {
     }
   }
 
-  protected boolean isSuccessorsAvailable() {
+  private boolean isSuccessorsAvailable() {
     return !successors.isEmpty();
   }
 

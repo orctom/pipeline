@@ -2,13 +2,13 @@ package com.orctom.pipeline.sample.spring.b;
 
 import com.orctom.pipeline.annotation.Actor;
 import com.orctom.pipeline.model.Message;
-import com.orctom.pipeline.precedure.PipeActor;
+import com.orctom.pipeline.precedure.Pipe;
 import com.orctom.pipeline.sample.spring.service.DummyService;
 
 import javax.annotation.Resource;
 
 @Actor
-class RoleB extends PipeActor {
+class RoleB extends Pipe {
 
   @Resource
   private DummyService service;
