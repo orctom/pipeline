@@ -1,62 +1,149 @@
 package com.orctom.pipeline;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.ExtendedActorSystem;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.cluster.Cluster;
 import akka.cluster.seed.ZookeeperClusterSeed;
+import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
+import com.orctom.laputa.exception.ClassLoadingException;
+import com.orctom.laputa.exception.IllegalArgException;
+import com.orctom.laputa.utils.ClassUtils;
+import com.orctom.pipeline.annotation.Actor;
 import com.orctom.pipeline.model.LocalActors;
+import com.orctom.pipeline.precedure.Pipe;
+import com.orctom.pipeline.util.ActorFactory;
 import com.orctom.pipeline.util.IdUtils;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Entry to bootstrap the actor
- * Created by chenhao on 8/3/16.
- */
 public class Pipeline {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Pipeline.class);
 
-  protected String role;
-  private final ActorSystem system;
+  private static final Pipeline INSTANCE = new Pipeline();
+
+  private String cluster;
+  private String role;
   private Set<String> predecessors;
+  private String[] basePackages;
+  private AnnotationConfigApplicationContext applicationContext;
+  private ActorSystem system;
 
   private List<ActorRef> actors = new ArrayList<>();
 
-  private Pipeline(ActorSystem system, String roleName, Set<String> predecessors) {
-    this.role = roleName;
-    this.system = system;
-    this.predecessors = predecessors;
+  private Pipeline() {
   }
 
-  public static Pipeline create(String clusterName, String roleName, String... predecessors) {
+  public static Pipeline getInstance() {
+    return INSTANCE;
+  }
+
+  public Pipeline withCluster(String cluster) {
+    this.cluster = cluster;
+    return this;
+  }
+
+  public Pipeline withRole(String role) {
+    this.role = role;
+    return this;
+  }
+
+  public Pipeline withPredecessors(String... predecessors) {
+    this.predecessors = Sets.newHashSet(predecessors);
+    return this;
+  }
+
+  public void run(Class<?> configurationClass) {
     IdUtils.generate();
-    Config config = Configurator.getInstance(roleName).getConfig();
-    ActorSystem system = ActorSystem.create(clusterName, config);
-    return new Pipeline(system, roleName, Sets.newHashSet(predecessors));
+    validate();
+    validate(configurationClass);
+    createApplicationContext(configurationClass);
+    createActorSystem();
+    registerActors();
+    start();
   }
 
-  public void start() {
-    start(null);
+  private void validate() {
+    if (Strings.isNullOrEmpty(cluster)) {
+      throw new IllegalArgException("`cluster` is required.");
+    }
+    if (Strings.isNullOrEmpty(role)) {
+      throw new IllegalArgException("`role` is required.");
+    }
   }
 
-  private void start(final Runnable onUpCallback) {
+  private void validate(Class<?> configurationClass) {
+    if (null == configurationClass) {
+      throw new IllegalArgException("Null class to 'run()'!");
+    }
+    if (!configurationClass.isAnnotationPresent(Configuration.class)) {
+      throw new IllegalArgException("@Configuration is expected on class: " + configurationClass);
+    }
+
+    ComponentScan componentScan = configurationClass.getAnnotation(ComponentScan.class);
+    if (null == componentScan) {
+      throw new IllegalArgException("@ComponentScan is expected on class: " + configurationClass);
+    } else {
+      basePackages = componentScan.basePackages();
+    }
+
+  }
+
+  private void createApplicationContext(Class<?> configurationClass) {
+    applicationContext = new AnnotationConfigApplicationContext(configurationClass);
+  }
+
+  private void createActorSystem() {
+    Config config = Configurator.getInstance(role).getConfig();
+    system = ActorSystem.create(cluster, config);
+
+    register("system", system);
+  }
+
+  private void register(String name, Object bean) {
+    applicationContext.getBeanFactory().registerSingleton(name, bean);
+    LOGGER.debug("registered {}: {} to spring context", name, bean);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void registerActors() {
+    ActorFactory actorFactory = new ActorFactory(applicationContext);
+    register("actorFactory", actorFactory);
+
+    for (String basePackage : basePackages) {
+      try {
+        List<Class<?>> classes = ClassUtils.getClassesWithAnnotation(basePackage, Actor.class);
+        for (Class<?> clazz : classes) {
+          if (!UntypedActor.class.isAssignableFrom(clazz)) {
+            LOGGER.error("{} is not an UntypedActor.", clazz);
+            continue;
+          }
+          ActorRef actor = actorFactory.create((Class<? extends UntypedActor>) clazz);
+          register(clazz.getCanonicalName(), actor);
+
+          if (Pipe.class.isAssignableFrom(clazz)) {
+            LOGGER.info("Found role: {}", clazz);
+            actors.add(actor);
+          }
+        }
+      } catch (ClassLoadingException e) {
+        LOGGER.error(e.getMessage(), e);
+      }
+    }
+  }
+
+  private void start() {
     new ZookeeperClusterSeed((ExtendedActorSystem) system).join();
 
-    Cluster.get(system).registerOnMemberUp(() -> {
-      if (null != onUpCallback) {
-        onUpCallback.run();
-      }
-      onStartup();
-    });
+    Cluster.get(system).registerOnMemberUp(this::onStartup);
 
     registerOnRemoved();
   }
@@ -64,16 +151,9 @@ public class Pipeline {
   private void onStartup() {
     ActorRef windtalker = system.actorOf(Props.create(Windtalker.class, predecessors), Windtalker.NAME);
     windtalker.tell(new LocalActors(role, actors), ActorRef.noSender());
-    LOGGER.debug("Bootstrap started.");
+    LOGGER.debug("[{}] started.", role);
   }
 
-  public ActorRef createActor(String name, Class<?> clazz, Object... args) {
-    LOGGER.debug("Creating actor: {}.", name);
-    ActorRef actor = system.actorOf(Props.create(clazz, args), name);
-    actors.add(actor);
-    LOGGER.debug("Created  actor: {}.", name);
-    return actor;
-  }
 
   private void registerOnRemoved() {
     Cluster.get(system).registerOnMemberRemoved(this::onRemoved);

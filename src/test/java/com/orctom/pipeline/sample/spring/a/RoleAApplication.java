@@ -1,6 +1,6 @@
 package com.orctom.pipeline.sample.spring.a;
 
-import com.orctom.pipeline.PipelineApplication;
+import com.orctom.pipeline.Pipeline;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 public class RoleAApplication {
 
   public static void main(String[] args) {
-    PipelineApplication.getInstance()
+    Pipeline.getInstance()
         .withCluster("dummy")
         .withRole("roleA")
         .run(RoleAApplication.class);
