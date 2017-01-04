@@ -10,7 +10,11 @@ public abstract class IdUtils {
 
   private static final IdGenerator GENERATOR = IdGenerator.create();
 
-  public static long generate() {
+  public static String generate() {
+    return String.valueOf(GENERATOR.generate());
+  }
+
+  public static long generateLong() {
     return GENERATOR.generate();
   }
 }

@@ -1,6 +1,6 @@
 package com.orctom.pipeline.precedure;
 
-import com.orctom.pipeline.model.Message;
+import com.orctom.rmq.Message;
 
 /**
  * source of stream

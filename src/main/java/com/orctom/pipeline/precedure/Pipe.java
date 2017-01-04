@@ -5,9 +5,12 @@ import akka.actor.Terminated;
 import akka.actor.UntypedActor;
 import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.model.GroupSuccessors;
-import com.orctom.pipeline.model.Message;
+import com.orctom.pipeline.model.PipelineMessage;
 import com.orctom.pipeline.model.RemoteActors;
 import com.orctom.pipeline.model.Successors;
+import com.orctom.rmq.Ack;
+import com.orctom.rmq.Message;
+import com.orctom.rmq.RMQ;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +44,7 @@ public abstract class Pipe extends UntypedActor {
   }
 
   protected void started() {
+    RMQ.getInstance().subscribe("inbox", new MessageConsumer(this));
   }
 
   private void logSuccessors() {
@@ -71,8 +75,9 @@ public abstract class Pipe extends UntypedActor {
       addSuccessors(remoteActors.getRole(), remoteActors.getActors());
       started();
 
-    } else if (message instanceof Message) {
-      onMessage((Message) message);
+    } else if (message instanceof com.orctom.rmq.Message) {
+      RMQ.getInstance().send("inbox", (com.orctom.rmq.Message) message);
+      getSender().tell(Info.ACK, getSelf());
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
@@ -85,7 +90,7 @@ public abstract class Pipe extends UntypedActor {
     }
   }
 
-  protected abstract void onMessage(Message message);
+  protected abstract Ack onMessage(Message pipelineMessage);
 
   private void addSuccessors(String role, List<ActorRef> actorRefs) {
     for (ActorRef actorRef : actorRefs) {

@@ -8,19 +8,19 @@ import java.io.Serializable;
  * Messages that ben transformed through the pipeline.
  * Created by chenhao on 8/3/16.
  */
-public abstract class Message implements Serializable {
+public abstract class PipelineMessage implements Serializable {
 
   private long id;
   private long timestamp;
 
-  public Message() {
-    id = IdUtils.generate();
+  public PipelineMessage() {
+    id = IdUtils.generateLong();
     timestamp = System.currentTimeMillis();
   }
 
-  public Message(Message msg) {
-    id = msg.getId();
-    timestamp = msg.getTimestamp();
+  public PipelineMessage(PipelineMessage msg) {
+    this.id = msg.getId();
+    this.timestamp = msg.getTimestamp();
   }
 
   public long getId() {

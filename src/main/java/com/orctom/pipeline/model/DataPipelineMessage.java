@@ -1,10 +1,10 @@
 package com.orctom.pipeline.model;
 
-public class DataMessage extends Message {
+public class DataPipelineMessage extends PipelineMessage {
 
   private String data;
 
-  public DataMessage(Message msg, String data) {
+  public DataPipelineMessage(PipelineMessage msg, String data) {
     super(msg);
     this.data = data;
   }
