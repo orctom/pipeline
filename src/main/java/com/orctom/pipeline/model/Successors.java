@@ -2,20 +2,27 @@ package com.orctom.pipeline.model;
 
 import akka.actor.ActorContext;
 import akka.actor.ActorRef;
+import com.orctom.pipeline.precedure.Pipe;
+import com.orctom.rmq.Ack;
+import com.orctom.rmq.Message;
+import com.orctom.rmq.RMQ;
+import com.orctom.rmq.RMQConsumer;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Successors {
+public class Successors implements RMQConsumer {
 
   private ActorContext context;
+  private ActorRef actor;
   private int size;
   private Map<String, GroupSuccessors> groups = new HashMap<>();
 
-  public Successors(ActorContext context) {
+  public Successors(ActorContext context, ActorRef actor) {
     this.context = context;
+    this.actor = actor;
   }
 
   public boolean isEmpty() {
@@ -27,21 +34,14 @@ public class Successors {
   }
 
   public synchronized boolean addSuccessor(String role, ActorRef actorRef) {
-    size++;
+    if (0 == size++) {
+      RMQ.getInstance().subscribe("ready", this);
+    }
     return addToGroup(role, actorRef);
-  }
-
-  public synchronized void addSuccessors(String role, List<ActorRef> actorRefs) {
-    size += actorRefs.size();
-    addToGroup(role, actorRefs);
   }
 
   private boolean addToGroup(String role, ActorRef actorRefs) {
     return getGroupSuccessors(role).addSuccessor(actorRefs);
-  }
-
-  private void addToGroup(String role, List<ActorRef> actorRefs) {
-    getGroupSuccessors(role).addSuccessors(actorRefs);
   }
 
   private GroupSuccessors getGroupSuccessors(String role) {
@@ -54,7 +54,9 @@ public class Successors {
   }
 
   public synchronized void remove(ActorRef actorRef) {
-    size--;
+    if (0 == --size) {
+      RMQ.getInstance().unsubscribe("ready", this);
+    }
     for (GroupSuccessors groupSuccessors : groups.values()) {
       groupSuccessors.remove(actorRef);
     }
@@ -62,5 +64,17 @@ public class Successors {
 
   public Collection<GroupSuccessors> getGroups() {
     return groups.values();
+  }
+
+  @Override
+  public Ack onMessage(Message message) {
+    if (isEmpty()) {
+      return Ack.HALT;
+    }
+    for (GroupSuccessors groupSuccessors : groups.values()) {
+      groupSuccessors.sendMessage(message, actor);
+    }
+
+    return Ack.DONE;
   }
 }

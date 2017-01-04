@@ -1,0 +1,20 @@
+@startuml
+actor "Pipe Actor"
+entity MessageConsumer
+database rmq
+actor "Other Pipe Actor"
+
+activate "Pipe Actor"
+"Pipe Actor" -> rmq: <<subscribe>> MessageConsumer to 'inbox'
+activate rmq
+
+
+"Pipe Actor" -> rmq: <<sendToSuccessors>>
+rmq -> MessageConsumer: message
+deactivate rmq
+activate MessageConsumer
+MessageConsumer -> "Other Pipe Actor": <<Message>>
+deactivate MessageConsumer
+
+deactivate "Pipe Actor"
+@enduml

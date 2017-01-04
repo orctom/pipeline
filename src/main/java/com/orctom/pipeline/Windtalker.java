@@ -38,7 +38,7 @@ class Windtalker extends UntypedActor {
 
   private Set<String> predecessors;
 
-  private Map<Long, MessageCache<ActorSelection, RemoteActors>> windtalkerMessages = new ConcurrentHashMap<>();
+  private Map<String, MessageCache<ActorSelection, RemoteActors>> windtalkerMessages = new ConcurrentHashMap<>();
   private ScheduledFuture<?> scheduled;
 
   public Windtalker(Set<String> predecessors) {
@@ -72,17 +72,13 @@ class Windtalker extends UntypedActor {
     if (message instanceof LocalActors) {
       localActors = (LocalActors) message;
       LOGGER.debug("Got a list of local actors: {}.", localActors.getActors());
-      if (!predecessorMembers.isEmpty()) {
-        for (Member member : predecessorMembers) {
-          notifyPredecessor(member);
-        }
-      }
+      notifyPredecessorsIfExist();
 
     } else if (message instanceof RemoteActors) { // from successors
       RemoteActors remoteActors = (RemoteActors) message;
       LOGGER.debug("Got a list of remote actors: {}.", remoteActors.getActors());
       informLocalActors(remoteActors);
-      getSender().tell(new MessageAck(remoteActors), getSelf());
+      getSender().tell(new MessageAck(remoteActors.getId()), getSelf());
 
     } else if (message instanceof MessageAck) { // from successors
       LOGGER.debug("Got ack from predecessor.");
@@ -107,6 +103,14 @@ class Windtalker extends UntypedActor {
     } else {
       unhandled(message);
       LOGGER.trace("Unhandled message: {}.", message);
+    }
+  }
+
+  private void notifyPredecessorsIfExist() {
+    Member member;
+    while (null != (member = predecessorMembers.poll())) {
+      LOGGER.info("notifyPredecessorsIfExist.");
+      notifyPredecessor(member);
     }
   }
 

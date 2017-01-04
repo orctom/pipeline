@@ -10,11 +10,11 @@ import java.io.Serializable;
  */
 public abstract class PipelineMessage implements Serializable {
 
-  private long id;
+  private String id;
   private long timestamp;
 
   public PipelineMessage() {
-    id = IdUtils.generateLong();
+    id = IdUtils.generate();
     timestamp = System.currentTimeMillis();
   }
 
@@ -23,7 +23,7 @@ public abstract class PipelineMessage implements Serializable {
     this.timestamp = msg.getTimestamp();
   }
 
-  public long getId() {
+  public String getId() {
     return id;
   }
 

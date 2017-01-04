@@ -1,0 +1,55 @@
+@startuml
+participant Pipeline
+actor Windtalker
+entity Cluster
+actor "Other Windtalker"
+
+activate Pipeline
+Pipeline -> Pipeline: register pipe(s)
+activate Pipeline
+deactivate Pipeline
+group Got a list of local pipe actors
+  Pipeline -> Windtalker: pipe(s) (LocalActors)
+  deactivate Pipeline
+
+  activate Windtalker
+  Windtalker -> "Other Windtalker": notify predecessors (RemoteActors)
+  activate "Other Windtalker"
+  "Other Windtalker" -> "Other Windtalker": inform LocalActors, add as successor
+  activate "Other Windtalker"
+  deactivate "Other Windtalker"
+  "Other Windtalker" -> Windtalker: MessageAck
+  deactivate "Other Windtalker"
+  Windtalker -> Windtalker: mark "windtalker messages" acknowledged
+  activate Windtalker
+  deactivate Windtalker
+end
+
+group Got a list of remote pipe actors
+  Windtalker -> Cluster: subscribe 'MemberUp'
+  activate Cluster
+  Windtalker -> Windtalker: resend thread
+  activate Windtalker
+  deactivate Windtalker
+
+  Cluster -> Windtalker: CurrentClusterState, MemberUp
+  deactivate Cluster
+  Windtalker -> Windtalker: register member if is predecessor
+  activate Windtalker
+  deactivate Windtalker
+
+  Windtalker -> "Other Windtalker": notify predecessors (RemoteActors)
+  activate "Other Windtalker"
+  "Other Windtalker" -> "Other Windtalker": inform LocalActors, add as successor
+  activate "Other Windtalker"
+  deactivate "Other Windtalker"
+  "Other Windtalker" -> Windtalker: MessageAck
+  deactivate "Other Windtalker"
+  Windtalker -> Windtalker: mark "windtalker messages" acknowledged
+  activate Windtalker
+  deactivate Windtalker
+deactivate Windtalker
+end
+
+
+@enduml

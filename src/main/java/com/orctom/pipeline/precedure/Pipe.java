@@ -4,13 +4,11 @@ import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
 import com.orctom.laputa.utils.SimpleMetrics;
-import com.orctom.pipeline.model.GroupSuccessors;
-import com.orctom.pipeline.model.PipelineMessage;
-import com.orctom.pipeline.model.RemoteActors;
-import com.orctom.pipeline.model.Successors;
+import com.orctom.pipeline.model.*;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQ;
+import com.orctom.rmq.RMQConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +24,7 @@ public abstract class Pipe extends UntypedActor {
 
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
-  private Successors successors = new Successors(getContext());
+  private Successors successors = new Successors(getContext(), getSelf());
 
   private SimpleMetrics metrics = SimpleMetrics.create(logger, 10, TimeUnit.SECONDS);
 
@@ -37,10 +35,6 @@ public abstract class Pipe extends UntypedActor {
     if (logger.isTraceEnabled()) {
       logSuccessors();
     }
-  }
-
-  private boolean isSuccessorsAvailable() {
-    return !successors.isEmpty();
   }
 
   protected void started() {
@@ -58,13 +52,7 @@ public abstract class Pipe extends UntypedActor {
 
   protected void sendToSuccessors(Message message) {
     logger.trace("sending to successor {}", message);
-    if (!isSuccessorsAvailable()) {
-      logger.debug("No available successors, discarding...");
-      return;
-    }
-    for (GroupSuccessors groupSuccessors : successors.getGroups()) {
-      groupSuccessors.sendMessage(message, getSelf());
-    }
+    RMQ.getInstance().send("ready", message);
   }
 
   @Override
@@ -75,9 +63,14 @@ public abstract class Pipe extends UntypedActor {
       addSuccessors(remoteActors.getRole(), remoteActors.getActors());
       started();
 
-    } else if (message instanceof com.orctom.rmq.Message) {
-      RMQ.getInstance().send("inbox", (com.orctom.rmq.Message) message);
-      getSender().tell(Info.ACK, getSelf());
+    } else if (message instanceof Message) {
+      Message msg = (Message) message;
+      RMQ.getInstance().send("inbox", msg);
+      getSender().tell(new MessageAck(msg.getId()), getSelf());
+
+    } else if (message instanceof MessageAck) {
+      MessageAck msg = (MessageAck) message;
+      RMQ.getInstance().delete("sent", msg.getId());
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
