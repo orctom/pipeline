@@ -4,11 +4,12 @@ import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
 import com.orctom.laputa.utils.SimpleMetrics;
-import com.orctom.pipeline.model.*;
+import com.orctom.pipeline.model.MessageAck;
+import com.orctom.pipeline.model.RemoteActors;
+import com.orctom.pipeline.model.Successors;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQ;
-import com.orctom.rmq.RMQConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +84,7 @@ public abstract class Pipe extends UntypedActor {
     }
   }
 
-  protected abstract Ack onMessage(Message pipelineMessage);
+  protected abstract Ack onMessage(Message message);
 
   private void addSuccessors(String role, List<ActorRef> actorRefs) {
     for (ActorRef actorRef : actorRefs) {

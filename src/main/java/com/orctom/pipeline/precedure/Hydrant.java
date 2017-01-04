@@ -1,6 +1,5 @@
 package com.orctom.pipeline.precedure;
 
-import com.orctom.pipeline.model.PipelineMessage;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 
@@ -18,7 +17,7 @@ public abstract class Hydrant extends Pipe {
   protected abstract void run();
 
   @Override
-  protected final Ack onMessage(Message pipelineMessage) {
+  protected final Ack onMessage(Message message) {
     return Ack.DONE;
   }
 }

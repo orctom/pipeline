@@ -1,7 +1,6 @@
 package com.orctom.pipeline.sample.spring.c;
 
 import com.orctom.pipeline.annotation.Actor;
-import com.orctom.pipeline.model.PipelineMessage;
 import com.orctom.pipeline.precedure.Outlet;
 import com.orctom.pipeline.sample.spring.service.DummyService;
 import com.orctom.rmq.Ack;
