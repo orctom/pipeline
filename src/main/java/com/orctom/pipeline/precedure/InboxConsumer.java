@@ -4,17 +4,17 @@ import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQConsumer;
 
-public class MessageConsumer implements RMQConsumer {
+public class InboxConsumer implements RMQConsumer {
 
-  private Pipe actor;
+  private AbstractPipe actor;
 
-  public MessageConsumer(Pipe actor) {
+  public InboxConsumer(AbstractPipe actor) {
     this.actor = actor;
   }
 
   @Override
   public Ack onMessage(Message message) {
-    return actor.onMessage(message);
+    return actor.onMsg(message);
   }
 
   @Override

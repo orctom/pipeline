@@ -16,8 +16,8 @@ class RoleB extends Pipe {
 
   @Override
   protected Ack onMessage(Message message) {
-    System.out.println(service.foo());
-    System.out.println(message);
+//    System.out.println(service.foo());
+//    System.out.println(message);
     sendToSuccessors(message);
     return Ack.DONE;
   }

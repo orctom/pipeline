@@ -7,7 +7,7 @@ import com.orctom.rmq.Message;
  * source of stream
  * Created by hao on 7/18/16.
  */
-public abstract class Hydrant extends Pipe {
+public abstract class Hydrant extends AbstractPipe {
 
   @Override
   protected void started() {

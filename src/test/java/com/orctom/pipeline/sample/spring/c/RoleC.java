@@ -16,8 +16,8 @@ class RoleC extends Outlet {
 
   @Override
   protected Ack onMessage(Message message) {
-    System.out.println(service.foo());
-    System.out.println(message);
+//    System.out.println(service.foo());
+//    System.out.println(message);
     return Ack.DONE;
   }
 }

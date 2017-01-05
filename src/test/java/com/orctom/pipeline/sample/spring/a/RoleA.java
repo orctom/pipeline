@@ -20,7 +20,7 @@ public class RoleA extends Hydrant {
   protected void run() {
     System.out.println("starting dummy");
     System.out.println(service.foo());
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 1_000_000; i++) {
       Message msg = new Message(
           IdUtils.generate(),
           RandomStringUtils.randomAlphanumeric(400)
