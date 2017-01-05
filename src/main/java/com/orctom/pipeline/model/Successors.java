@@ -45,12 +45,7 @@ public class Successors implements RMQConsumer {
   }
 
   private GroupSuccessors getGroupSuccessors(String role) {
-    GroupSuccessors group = groups.get(role);
-    if (null == group) {
-      group = new GroupSuccessors(context);
-      groups.put(role, group);
-    }
-    return group;
+    return groups.computeIfAbsent(role, k -> new GroupSuccessors(context));
   }
 
   public synchronized void remove(ActorRef actorRef) {
