@@ -23,7 +23,7 @@ public class Successors implements RMQConsumer {
   private ActorContext context;
   private ActorRef actor;
   private SimpleMetrics metrics;
-  private int size;
+  private volatile int size;
   private Map<String, GroupSuccessors> groups = new HashMap<>();
 
   public Successors(ActorContext context, ActorRef actor, SimpleMetrics metrics) {

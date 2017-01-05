@@ -23,12 +23,12 @@ import static com.orctom.pipeline.Constants.*;
  * So that current actor can get a list of live predecessors and successors.
  * Created by hao on 7/18/16.
  */
-public abstract class AbstractPipe extends UntypedActor {
+1public abstract class PipeActor extends UntypedActor {
 
 
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
-  private SimpleMetrics metrics = SimpleMetrics.create(logger, 10, TimeUnit.SECONDS);
+  private SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
 
   private Successors successors = new Successors(getContext(), getSelf(), metrics);
 

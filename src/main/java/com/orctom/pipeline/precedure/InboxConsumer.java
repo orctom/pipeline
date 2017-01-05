@@ -6,9 +6,9 @@ import com.orctom.rmq.RMQConsumer;
 
 public class InboxConsumer implements RMQConsumer {
 
-  private AbstractPipe actor;
+  private PipeActor actor;
 
-  public InboxConsumer(AbstractPipe actor) {
+  public InboxConsumer(PipeActor actor) {
     this.actor = actor;
   }
 
