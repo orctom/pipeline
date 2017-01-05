@@ -2,7 +2,6 @@ package com.orctom.pipeline.model;
 
 import akka.actor.ActorContext;
 import akka.actor.ActorRef;
-import com.orctom.pipeline.precedure.Pipe;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQ;
@@ -10,7 +9,6 @@ import com.orctom.rmq.RMQConsumer;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Successors implements RMQConsumer {

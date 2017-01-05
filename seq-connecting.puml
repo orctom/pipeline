@@ -1,20 +1,52 @@
 @startuml
+actor Windtalker
 actor "Pipe Actor"
 entity MessageConsumer
+entity Successors
 database rmq
 actor "Other Pipe Actor"
 
-activate "Pipe Actor"
-"Pipe Actor" -> rmq: <<subscribe>> MessageConsumer to 'inbox'
-activate rmq
+group inbox
+  activate "Pipe Actor"
+  "Pipe Actor" -> rmq: <<subscribe>> MessageConsumer to 'inbox'
+  activate rmq
 
+  "Other Pipe Actor" -> "Pipe Actor": send <Message>
+  "Pipe Actor" -> rmq: save to 'inbox'
 
-"Pipe Actor" -> rmq: <<sendToSuccessors>>
-rmq -> MessageConsumer: message
-deactivate rmq
-activate MessageConsumer
-MessageConsumer -> "Other Pipe Actor": <<Message>>
-deactivate MessageConsumer
+  rmq -> MessageConsumer: message
+  deactivate rmq
+  activate MessageConsumer
+  MessageConsumer -> "Pipe Actor": <<onMessage>>
+  deactivate MessageConsumer
+end
 
-deactivate "Pipe Actor"
+group processed
+  Windtalker -> "Pipe Actor": <RemoteActors>
+  "Pipe Actor" -> Successors: <<addSuccessors>>
+  activate Successors
+  Successors -> rmq: <<subscribe>> self to 'ready'
+  deactivate Successors
+  activate rmq
+  deactivate rmq
+
+  "Pipe Actor" -> rmq: <<sendToSuccessors>>
+  rmq -> Successors: <Message>
+  deactivate rmq
+  activate Successors
+  Successors -> "Other Pipe Actor": send messages to successors
+  Successors -> rmq: <<Ack.DONE>>
+  activate rmq
+  Successors -> rmq: save sent <Message> to 'sent'
+  deactivate rmq
+  deactivate Successors
+  deactivate "Pipe Actor"
+end
+
+group acknowledgement
+  "Other Pipe Actor" -> "Pipe Actor": <<MessageAck>>
+  activate "Pipe Actor"
+  "Pipe Actor" -> rmq: delete from 'sent'
+  deactivate "Pipe Actor"
+end
 @enduml
