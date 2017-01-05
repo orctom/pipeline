@@ -16,4 +16,9 @@ public class MessageConsumer implements RMQConsumer {
   public Ack onMessage(Message message) {
     return actor.onMessage(message);
   }
+
+  @Override
+  public String toString() {
+    return "MessageConsumer{" + actor.toString() + '}';
+  }
 }

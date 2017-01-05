@@ -13,6 +13,7 @@ import com.orctom.pipeline.model.LocalActors;
 import com.orctom.pipeline.precedure.Pipe;
 import com.orctom.pipeline.util.ActorFactory;
 import com.orctom.pipeline.util.IdUtils;
+import com.orctom.rmq.RMQOptions;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,7 @@ public class Pipeline {
 
   public Pipeline withRole(String role) {
     this.role = role;
+    RMQOptions.getInstance().setId(role);
     return this;
   }
 

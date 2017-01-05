@@ -31,24 +31,12 @@ public abstract class Pipe extends UntypedActor {
 
   @Override
   public void preStart() throws Exception {
-    logger.debug("Staring actor: {}...", getSelf().path());
+    logger.debug("Staring actor: {}...", getSelf().toString());
 
-    if (logger.isTraceEnabled()) {
-      logSuccessors();
-    }
-  }
-
-  protected void started() {
     RMQ.getInstance().subscribe("inbox", new MessageConsumer(this));
   }
 
-  private void logSuccessors() {
-    metrics.gauge("routee", () -> {
-      if (logger.isTraceEnabled()) {
-        logger.trace(successors.toString());
-      }
-      return successors.size();
-    });
+  protected void started() {
   }
 
   protected void sendToSuccessors(Message message) {
@@ -96,8 +84,27 @@ public abstract class Pipe extends UntypedActor {
     logger.debug("Adding as routee {}.", actorRef.toString());
     if (successors.addSuccessor(role, actorRef)) {
       getContext().watch(actorRef);
+
+      if (logger.isTraceEnabled()) {
+        logSuccessors();
+      }
+
     } else {
       logger.debug("Already exists.");
     }
+  }
+
+  private void logSuccessors() {
+    metrics.setGaugeIfNotExist("routee", () -> {
+      if (logger.isDebugEnabled()) {
+        logger.debug(successors.toString());
+      }
+      return successors.size();
+    });
+  }
+
+  @Override
+  public String toString() {
+    return getSelf().toString();
   }
 }

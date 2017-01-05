@@ -9,9 +9,11 @@ public class Configurator {
 
   private Configurator(String roleName) {
     final Config role = ConfigFactory.load(roleName);
+    final Config ref = ConfigFactory.load("reference.conf");
     final Config app = ConfigFactory.load();
     config = ConfigFactory.parseString(String.format("akka.cluster.roles = [%s]", roleName))
         .withFallback(role)
+        .withFallback(ref)
         .withFallback(app);
   }
 

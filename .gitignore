@@ -24,5 +24,5 @@ target/
 build/
 bin/
 classes/
-data
+.data
 DummyTest

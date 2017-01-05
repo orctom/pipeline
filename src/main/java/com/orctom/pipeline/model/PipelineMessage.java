@@ -14,8 +14,13 @@ public abstract class PipelineMessage implements Serializable {
   private long timestamp;
 
   public PipelineMessage() {
-    id = IdUtils.generate();
-    timestamp = System.currentTimeMillis();
+    this.id = IdUtils.generate();
+    this.timestamp = System.currentTimeMillis();
+  }
+
+  public PipelineMessage(String id) {
+    this.id = id;
+    this.timestamp = System.currentTimeMillis();
   }
 
   public PipelineMessage(PipelineMessage msg) {

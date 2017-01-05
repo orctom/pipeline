@@ -70,4 +70,11 @@ public class Successors implements RMQConsumer {
 
     return Ack.DONE;
   }
+
+  @Override
+  public String toString() {
+    return "Successors{" +
+        "groups=" + groups +
+        '}';
+  }
 }
