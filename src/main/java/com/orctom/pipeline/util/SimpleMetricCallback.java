@@ -31,7 +31,7 @@ public class SimpleMetricCallback implements MetricCallback {
 
   @Override
   public void onMetric(Metric metric) {
-    byte[] data = SerilazationUtils.toBytes(metric);
+    byte[] data = SerializationUtils.toBytes(metric);
     Message message = new Message(IdUtils.generate(), data);
     LOGGER.debug("onMetric: {}, {}", message.getId(), metric);
     simpleMetricsActor.tell(message, ActorRef.noSender());

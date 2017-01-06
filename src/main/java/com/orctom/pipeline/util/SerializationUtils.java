@@ -4,7 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 
-public abstract class SerilazationUtils {
+public abstract class SerializationUtils {
 
   private static Kryo kryo = new Kryo();
 

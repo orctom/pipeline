@@ -1,7 +1,7 @@
 package com.orctom.pipeline.precedure;
 
 import com.orctom.laputa.model.Metric;
-import com.orctom.pipeline.util.SerilazationUtils;
+import com.orctom.pipeline.util.SerializationUtils;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import org.slf4j.Logger;
@@ -15,7 +15,7 @@ public class SimpleMetricsActor extends Pipe {
   protected Ack onMessage(Message message) {
     String id = message.getId();
     byte[] data = message.getData();
-    Metric metric = SerilazationUtils.toObject(data, Metric.class);
+    Metric metric = SerializationUtils.toObject(data, Metric.class);
     LOGGER.debug("id: {}, metric: {}", id, metric);
     return Ack.DONE;
   }
