@@ -20,17 +20,17 @@ public class RoleA extends Hydrant {
   protected void run() {
     System.out.println("starting dummy");
     System.out.println(service.foo());
-    for (int i = 0; i < 1_000_000; i++) {
+    for (int i = 0; i < 100_000; i++) {
       Message msg = new Message(
           IdUtils.generate(),
-          RandomStringUtils.randomAlphanumeric(400)
+          RandomStringUtils.randomAlphanumeric(400).getBytes()
       );
       sendToSuccessors(msg);
-    }
-    try {
-      TimeUnit.SECONDS.sleep(30);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
+      try {
+        TimeUnit.MILLISECONDS.sleep(10);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
   }
 }

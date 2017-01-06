@@ -7,6 +7,7 @@ import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.model.MessageAck;
 import com.orctom.pipeline.model.RemoteActors;
 import com.orctom.pipeline.model.Successors;
+import com.orctom.pipeline.util.SimpleMetricCallback;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQ;
@@ -36,6 +37,8 @@ public abstract class PipeActor extends UntypedActor {
     logger.debug("Staring actor: {}...", getSelf().toString());
 
     RMQ.getInstance().subscribe(Q_INBOX, new InboxConsumer(this));
+
+    metrics.setCallback(SimpleMetricCallback.getInstance());
   }
 
   protected void started() {

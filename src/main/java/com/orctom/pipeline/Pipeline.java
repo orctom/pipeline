@@ -156,12 +156,23 @@ public class Pipeline {
     LOGGER.debug("[{}] started.", role);
   }
 
-
   private void registerOnRemoved() {
     Cluster.get(system).registerOnMemberRemoved(this::onRemoved);
   }
 
   private void onRemoved() {
     LOGGER.debug("{} get removed", getClass());
+  }
+
+  public String getCluster() {
+    return cluster;
+  }
+
+  public String getRole() {
+    return role;
+  }
+
+  public ActorSystem getSystem() {
+    return system;
   }
 }
