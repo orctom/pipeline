@@ -10,6 +10,8 @@ import com.orctom.laputa.exception.IllegalArgException;
 import com.orctom.laputa.utils.ClassUtils;
 import com.orctom.pipeline.annotation.Actor;
 import com.orctom.pipeline.model.LocalActors;
+import com.orctom.pipeline.model.LocalMetricsCollectorActors;
+import com.orctom.pipeline.precedure.AbstractMetricsCollector;
 import com.orctom.pipeline.precedure.PipeActor;
 import com.orctom.pipeline.util.ActorFactory;
 import com.orctom.pipeline.util.IdUtils;
@@ -17,6 +19,7 @@ import com.orctom.rmq.RMQOptions;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -39,6 +42,7 @@ public class Pipeline {
   private ActorSystem system;
 
   private List<ActorRef> actors = new ArrayList<>();
+  private LocalMetricsCollectorActors metricsCollectors = new LocalMetricsCollectorActors();
 
   private Pipeline() {
   }
@@ -111,8 +115,17 @@ public class Pipeline {
   }
 
   private void register(String name, Object bean) {
+    String beanName = lowerCasedFirstChar(name);
     applicationContext.getBeanFactory().registerSingleton(name, bean);
-    LOGGER.debug("registered {}: {} to spring context", name, bean);
+    LOGGER.debug("registered {}: {} to spring context", name, bean.getClass());
+//    applicationContext.getBeanFactory().registerSingleton(beanName, bean);
+//    LOGGER.debug("registered {}: {} to spring context", beanName, bean.getClass());
+  }
+
+  private String lowerCasedFirstChar(String name) {
+    char c[] = name.toCharArray();
+    c[0] += 32;
+    return new String(c);
   }
 
   @SuppressWarnings("unchecked")
@@ -129,11 +142,16 @@ public class Pipeline {
             continue;
           }
           ActorRef actor = actorFactory.create((Class<? extends UntypedActor>) clazz);
-          register(clazz.getCanonicalName(), actor);
+          register(clazz.getSimpleName(), actor);
 
           if (PipeActor.class.isAssignableFrom(clazz)) {
             LOGGER.info("Found role: {}", clazz);
             actors.add(actor);
+          }
+
+          if (AbstractMetricsCollector.class.isAssignableFrom(clazz)) {
+            LOGGER.info("Found MetricsCenterActor: {}", actor);
+            metricsCollectors.add(actor);
           }
         }
       } catch (ClassLoadingException e) {
@@ -153,6 +171,9 @@ public class Pipeline {
   private void onStartup() {
     ActorRef windtalker = system.actorOf(Props.create(Windtalker.class, predecessors), Windtalker.NAME);
     windtalker.tell(new LocalActors(role, actors), ActorRef.noSender());
+    if (!metricsCollectors.getActors().isEmpty()) {
+      windtalker.tell(metricsCollectors, ActorRef.noSender());
+    }
     LOGGER.debug("[{}] started.", role);
   }
 
@@ -162,6 +183,10 @@ public class Pipeline {
 
   private void onRemoved() {
     LOGGER.debug("{} get removed", getClass());
+  }
+
+  public ApplicationContext getApplicationContext() {
+    return applicationContext;
   }
 
   public String getCluster() {

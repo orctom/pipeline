@@ -6,6 +6,7 @@ import akka.actor.UntypedActor;
 import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.model.MessageAck;
 import com.orctom.pipeline.model.RemoteActors;
+import com.orctom.pipeline.model.RemoteMetricsCollectorActors;
 import com.orctom.pipeline.model.Successors;
 import com.orctom.pipeline.util.SimpleMetricCallback;
 import com.orctom.rmq.Ack;
@@ -33,14 +34,20 @@ public abstract class PipeActor extends UntypedActor {
   private Successors successors = new Successors(getContext(), getSelf(), metrics);
 
   @Override
-  public void preStart() throws Exception {
+  public final void preStart() throws Exception {
     logger.debug("Staring actor: {}...", getSelf().toString());
-
-    RMQ.getInstance().subscribe(Q_INBOX, new InboxConsumer(this));
-
+    subscribeInbox();
     metrics.setCallback(SimpleMetricCallback.getInstance());
+    started();
   }
 
+  protected void subscribeInbox() {
+    RMQ.getInstance().subscribe(Q_INBOX, new InboxConsumer(this));
+  }
+
+  /**
+   * Don't halt on this thread
+   */
   protected void started() {
   }
 
@@ -52,29 +59,37 @@ public abstract class PipeActor extends UntypedActor {
 
   @Override
   public final void onReceive(Object message) throws Exception {
-    if (message instanceof RemoteActors) { // from windtalker
-      RemoteActors remoteActors = (RemoteActors) message;
-      logger.debug("Received successors: {} -> {}", remoteActors.getRole(), remoteActors.getActors());
-      addSuccessors(remoteActors.getRole(), remoteActors.getActors());
-      started();
-
-    } else if (message instanceof Message) {
+    if (message instanceof Message) { // from predecessor pipe actors
       Message msg = (Message) message;
       RMQ.getInstance().send(Q_INBOX, msg);
       getSender().tell(new MessageAck(msg.getId()), getSelf());
 
-    } else if (message instanceof MessageAck) {
+    } else if (message instanceof MessageAck) { // from successor pipe actors
       MessageAck msg = (MessageAck) message;
       RMQ.getInstance().delete(Q_SENT, msg.getId());
+
+    } else if (message instanceof RemoteActors) { // from windtalker
+      RemoteActors remoteActors = (RemoteActors) message;
+      logger.debug("Linked with successor {}: {}", remoteActors.getRole(), remoteActors.getActors());
+      addSuccessors(remoteActors.getRole(), remoteActors.getActors());
+
+    } else if (message instanceof RemoteMetricsCollectorActors) { // from windtalker
+      logger.info("Received metrics-collector");
+      RemoteMetricsCollectorActors msg = (RemoteMetricsCollectorActors) message;
+      for (ActorRef actorRef : msg.getActors()) {
+        getContext().watch(actorRef);
+      }
+      SimpleMetricCallback.getInstance().addCollectors(msg.getActors());
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
       successors.remove(terminated.getActor());
+      SimpleMetricCallback.getInstance().removeCollector(terminated.getActor());
       logger.warn("Routee {} terminated.", terminated.getActor().toString());
 
     } else {
       unhandled(message);
-      logger.trace("Unhandled message: {}.", message);
+      logger.warn("Unhandled message: {}.", message);
     }
   }
 
@@ -95,10 +110,7 @@ public abstract class PipeActor extends UntypedActor {
     logger.debug("Adding as routee {}.", actorRef.toString());
     if (successors.addSuccessor(role, actorRef)) {
       getContext().watch(actorRef);
-
-      if (logger.isTraceEnabled()) {
-        logSuccessors();
-      }
+      logSuccessors();
 
     } else {
       logger.debug("Already exists.");
@@ -106,12 +118,7 @@ public abstract class PipeActor extends UntypedActor {
   }
 
   private void logSuccessors() {
-    metrics.setGaugeIfNotExist("routee", () -> {
-      if (logger.isDebugEnabled()) {
-        logger.debug(successors.toString());
-      }
-      return successors.size();
-    });
+    metrics.setGaugeIfNotExist("routee", () -> successors.getRoles());
   }
 
   @Override

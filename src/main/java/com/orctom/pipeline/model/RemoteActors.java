@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * paths of created actor
- * Created by chenhao on 8/16/16.
+ * When <code>windtalker</code> receives this message from remote <code>windtalkers</code>,<br/>
+ * it should notify local pipe actions, that the payload of the message (an actor list)<br/>
+ * should be used as the successors of the date flow. <br/>
+ * a.k.a. sending the processed messages to them.
  */
 public class RemoteActors extends PipelineMessage {
 

@@ -17,17 +17,17 @@ public class RoleA extends Hydrant {
   private DummyService service;
 
   @Override
-  protected void run() {
+  public void run() {
     System.out.println("starting dummy");
     System.out.println(service.foo());
-    for (int i = 0; i < 100_000; i++) {
+    for (int i = 0; i < 3000; i++) {
       Message msg = new Message(
           IdUtils.generate(),
           RandomStringUtils.randomAlphanumeric(400).getBytes()
       );
       sendToSuccessors(msg);
       try {
-        TimeUnit.MILLISECONDS.sleep(10);
+        TimeUnit.MILLISECONDS.sleep(3000);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

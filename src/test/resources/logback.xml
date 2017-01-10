@@ -6,11 +6,11 @@
     </encoder>
   </appender>
 
-  <logger name="com.orctom.pipeline" level="debug" additivity="false">
+  <logger name="com.orctom.pipeline" level="info" additivity="false">
     <appender-ref ref="stdout"/>
   </logger>
 
-  <logger name="com.orctom.rmq" level="debug" additivity="false">
+  <logger name="com.orctom.rmq" level="warn" additivity="false">
     <appender-ref ref="stdout"/>
   </logger>
 

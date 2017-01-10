@@ -7,15 +7,21 @@ import com.orctom.rmq.Message;
  * source of stream
  * Created by hao on 7/18/16.
  */
-public abstract class Hydrant extends PipeActor {
+public abstract class Hydrant extends PipeActor implements Runnable {
 
   @Override
-  public final void preStart() throws Exception {
-    super.preStart();
-    run();
+  protected final void started() {
+    new Thread(this).start();
+    System.out.println("started thread");
   }
 
-  protected abstract void run();
+  @Override
+  protected final void subscribeInbox() {
+    // do nothing, as no predecessor for a Hydrant
+  }
+
+  @Override
+  public abstract void run();
 
   @Override
   protected final Ack onMessage(Message message) {

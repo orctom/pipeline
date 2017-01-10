@@ -1,15 +1,17 @@
 package com.orctom.pipeline.util;
 
 import akka.actor.ActorRef;
-import akka.actor.ActorSystem;
-import akka.actor.Props;
 import com.orctom.laputa.model.Metric;
 import com.orctom.laputa.model.MetricCallback;
 import com.orctom.pipeline.Pipeline;
-import com.orctom.pipeline.precedure.SimpleMetricsActor;
-import com.orctom.rmq.Message;
+import com.orctom.pipeline.model.PipelineMessage;
+import com.orctom.pipeline.model.PipelineMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class SimpleMetricCallback implements MetricCallback {
 
@@ -17,23 +19,43 @@ public class SimpleMetricCallback implements MetricCallback {
 
   private static final SimpleMetricCallback INSTANCE = new SimpleMetricCallback();
 
-  private ActorRef simpleMetricsActor;
+  private Set<ActorRef> metricsCollectorActors = new HashSet<>();
+
+  private String roleName = Pipeline.getInstance().getRole();
 
   private SimpleMetricCallback() {
-    ActorSystem system = Pipeline.getInstance().getSystem();
-    Props props = Props.create(SimpleMetricsActor.class);
-    simpleMetricsActor = system.actorOf(props, "simple-metrics");
   }
 
   public static SimpleMetricCallback getInstance() {
     return INSTANCE;
   }
 
+  public void setMetricsCollectorActors(Set<ActorRef> metricsCollectorActors) {
+    LOGGER.info("metrics collectors set.");
+    this.metricsCollectorActors = metricsCollectorActors;
+  }
+
   @Override
   public void onMetric(Metric metric) {
-    byte[] data = SerializationUtils.toBytes(metric);
-    Message message = new Message(IdUtils.generate(), data);
-    LOGGER.debug("onMetric: {}, {}", message.getId(), metric);
-    simpleMetricsActor.tell(message, ActorRef.noSender());
+    if (null == metricsCollectorActors || metricsCollectorActors.isEmpty()) {
+      LOGGER.trace("Skipped, no metrics collectors");
+      return;
+    }
+
+    PipelineMetrics pm = new PipelineMetrics(roleName, metric);
+    LOGGER.debug("onMetric: {}", metric);
+    for (ActorRef actor : metricsCollectorActors) {
+      actor.tell(pm, ActorRef.noSender());
+    }
+  }
+
+  public void addCollectors(List<ActorRef> actors) {
+    LOGGER.info("metrics collectors added: {}.", actors);
+    metricsCollectorActors.addAll(actors);
+  }
+
+  public void removeCollector(ActorRef actor) {
+    LOGGER.info("metrics collector added: {}.", actor);
+    metricsCollectorActors.remove(actor);
   }
 }

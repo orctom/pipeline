@@ -10,6 +10,7 @@ import com.orctom.rmq.RMQConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,7 +42,9 @@ public class Successors implements RMQConsumer {
   }
 
   public synchronized boolean addSuccessor(String role, ActorRef actorRef) {
+    LOGGER.debug("Added successor: {}, {}", role, actorRef);
     if (0 == size++) {
+      LOGGER.info("Subscribed to 'ready'.");
       RMQ.getInstance().subscribe(Q_READY, this);
     }
     return addToGroup(role, actorRef);
@@ -56,8 +59,10 @@ public class Successors implements RMQConsumer {
   }
 
   public synchronized void remove(ActorRef actorRef) {
+    LOGGER.debug("Removed successor: {}", actorRef);
     if (0 == --size) {
       RMQ.getInstance().unsubscribe(Q_READY, this);
+      LOGGER.info("Un-subscribed from 'ready'.");
     }
     for (GroupSuccessors groupSuccessors : groups.values()) {
       groupSuccessors.remove(actorRef);
@@ -85,6 +90,10 @@ public class Successors implements RMQConsumer {
 
   private void moveToSentQueue(Message message) {
     RMQ.getInstance().send(Q_SENT, message);
+  }
+
+  public String getRoles() {
+    return Arrays.toString(groups.keySet().toArray());
   }
 
   @Override

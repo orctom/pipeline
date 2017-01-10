@@ -17,6 +17,12 @@ public class ActorFactory implements Extension {
 
   public ActorRef create(Class<? extends UntypedActor> actorBeanType) {
     ActorSystem actorSystem = applicationContext.getBean(ActorSystem.class);
-    return actorSystem.actorOf(propsOf(actorBeanType));
+    return actorSystem.actorOf(propsOf(actorBeanType), lowerCasedFirstChar(actorBeanType.getSimpleName()));
+  }
+
+  private String lowerCasedFirstChar(String name) {
+    char c[] = name.toCharArray();
+    c[0] += 32;
+    return new String(c);
   }
 }

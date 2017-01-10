@@ -8,17 +8,12 @@ import akka.cluster.ClusterEvent.CurrentClusterState;
 import akka.cluster.ClusterEvent.MemberUp;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
-import com.orctom.pipeline.model.LocalActors;
-import com.orctom.pipeline.model.MessageAck;
-import com.orctom.pipeline.model.MessageCache;
-import com.orctom.pipeline.model.RemoteActors;
+import com.orctom.laputa.utils.MutableInt;
+import com.orctom.pipeline.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 
 /**
@@ -36,9 +31,13 @@ class Windtalker extends UntypedActor {
   private LocalActors localActors;
   private Queue<Member> predecessorMembers = new LinkedList<>();
 
+  private List<ActorRef> metricsCollectorActors;
+  private Queue<Member> allMembers = new LinkedList<>();
+
   private Set<String> predecessors;
 
-  private Map<String, MessageCache<ActorSelection, RemoteActors>> windtalkerMessages = new ConcurrentHashMap<>();
+  private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+  private Map<String, MessageCache<ActorSelection, PipelineMessage>> windtalkerMessages = new ConcurrentHashMap<>();
   private ScheduledFuture<?> scheduled;
 
   public Windtalker(Set<String> predecessors) {
@@ -47,14 +46,9 @@ class Windtalker extends UntypedActor {
 
   @Override
   public void preStart() throws Exception {
-    LOGGER.debug("Staring Windtalker...");
-    if (hasPredecessors()) {
-      LOGGER.debug("{} -> this.", predecessors);
-      cluster.subscribe(getSelf(), MemberUp.class);
-    } else {
-      LOGGER.debug("Started (Hydrant).");
-    }
+    LOGGER.debug("Staring Windtalker... {}", hasPredecessors() ? (predecessors + " -> this") : "as [Hydrant]");
 
+    cluster.subscribe(getSelf(), MemberUp.class);
     startResendingThread();
   }
 
@@ -69,33 +63,44 @@ class Windtalker extends UntypedActor {
 
   @Override
   public final void onReceive(Object message) throws Exception {
-    if (message instanceof LocalActors) {
+    if (message instanceof LocalActors) { // from Pipeline
       localActors = (LocalActors) message;
       LOGGER.debug("Got a list of local actors: {}.", localActors.getActors());
       notifyPredecessorsIfExist();
 
-    } else if (message instanceof RemoteActors) { // from successors
+    } else if (message instanceof RemoteActors) { // from successors windtalker
       RemoteActors remoteActors = (RemoteActors) message;
       LOGGER.debug("Got a list of remote actors: {}.", remoteActors.getActors());
       informLocalActors(remoteActors);
       getSender().tell(new MessageAck(remoteActors.getId()), getSelf());
 
-    } else if (message instanceof MessageAck) { // from successors
-      LOGGER.debug("Got ack from predecessor.");
+    } else if (message instanceof LocalMetricsCollectorActors) { // from Pipeline
+      metricsCollectorActors = ((LocalMetricsCollectorActors) message).getActors();
+      LOGGER.debug("Got a list of LocalMetricsCenterActors: {}.", metricsCollectorActors);
+      notifyAllMembers();
+
+    } else if (message instanceof RemoteMetricsCollectorActors) { // from remote windtalker
+      RemoteMetricsCollectorActors remoteMetricsCollectorActors = (RemoteMetricsCollectorActors) message;
+      LOGGER.debug("Got a list of RemoteMetricsCenterActors: {}.", remoteMetricsCollectorActors.getActors());
+      informLocalActors(remoteMetricsCollectorActors);
+      getSender().tell(new MessageAck(remoteMetricsCollectorActors.getId()), getSelf());
+
+    } else if (message instanceof MessageAck) { // from successors windtalker
+      LOGGER.debug("Got ack from predecessor: {}.", getSender());
       MessageAck ack = (MessageAck) message;
       windtalkerMessages.remove(ack.getId());
 
     } else if (message instanceof CurrentClusterState) {
-      LOGGER.trace("processing CurrentClusterState event.");
+      LOGGER.trace("Processing CurrentClusterState event.");
       CurrentClusterState state = (CurrentClusterState) message;
       for (Member member : state.getMembers()) {
         if (member.status().equals(MemberStatus.up())) {
-          LOGGER.trace(" Live member: {}.", member.toString());
           registerMember(member);
         }
       }
 
     } else if (message instanceof MemberUp) {
+      LOGGER.trace("Processing MemberUp event.");
       MemberUp mUp = (MemberUp) message;
       LOGGER.trace("Member {} is up.", mUp.member().toString());
       registerMember(mUp.member());
@@ -109,21 +114,34 @@ class Windtalker extends UntypedActor {
   private void notifyPredecessorsIfExist() {
     Member member;
     while (null != (member = predecessorMembers.poll())) {
-      LOGGER.info("notifyPredecessorsIfExist.");
-      notifyPredecessor(member);
+      LOGGER.info("Notified predecessor {}.", member);
+      notifyMember(member, createRemoteActorsMessage());
+    }
+  }
+
+  private void informLocalActors(RemoteMetricsCollectorActors remoteMetricsCollectorActors) {
+    LOGGER.debug("Informing local actors with metrics-collector: {}.", remoteMetricsCollectorActors.getActors());
+    if (isLocalActorsEmpty()) {
+      LOGGER.error("No local user actors started.");
+      return;
+    }
+
+    for (ActorRef localActor : localActors.getActors()) {
+      localActor.tell(remoteMetricsCollectorActors, getSelf());
+      LOGGER.debug("Informed: {} with metrics-collector.", localActor);
     }
   }
 
   private void informLocalActors(RemoteActors remoteActors) {
-    LOGGER.debug(" Informing local actors: {}.", localActors.getActors());
+    LOGGER.debug("Informing local actors with: {}.", remoteActors.getActors());
     if (isLocalActorsEmpty()) {
-      LOGGER.error("No user actors started.");
+      LOGGER.error("Skipped, no local user actors.");
       return;
     }
 
     for (ActorRef localActor : localActors.getActors()) {
       localActor.tell(remoteActors, getSelf());
-      LOGGER.debug("  Informed : {}.", localActor);
+      LOGGER.debug("Informed: {}.", localActor);
     }
   }
 
@@ -132,52 +150,99 @@ class Windtalker extends UntypedActor {
   }
 
   private void registerMember(Member member) {
-    LOGGER.debug(" Registering member {}, with roles: {}.", member.address(), member.getRoles());
+    LOGGER.debug("Registering member {}, with roles: {}.", member.address(), member.getRoles());
+
+    if (isMemberCurrentRole(member)) {
+      LOGGER.debug("Skipped, same role as current one.");
+      return;
+    }
+
+    if (null != metricsCollectorActors) {
+      LOGGER.debug("Notified {} with metrics-collector.", member);
+      notifyMemberWithMetricsCollector(member);
+    } else {
+      allMembers.add(member);
+    }
+
+    if (null == predecessors) {
+      LOGGER.debug("Skipped predecessor notifications for Hydrant.");
+      return;
+    }
+
     for (String role : predecessors) {
       if (member.hasRole(role)) {
         if (isLocalActorsEmpty()) {
           predecessorMembers.offer(member);
         } else {
-          notifyPredecessor(member);
+          notifyMember(member, createRemoteActorsMessage());
+          startResendingThread();
         }
-        return;
       }
     }
   }
 
-  private void notifyPredecessor(Member member) {
+  private boolean isMemberCurrentRole(Member member) {
+    return member.hasRole(Pipeline.getInstance().getRole());
+  }
+
+  private RemoteActors createRemoteActorsMessage() {
+    return new RemoteActors(localActors.getRole(), localActors.getActors());
+  }
+
+  private void notifyMember(Member member, PipelineMessage message) {
     String predecessorWindtalkerAddress = member.address() + "/user/" + NAME;
     ActorSelection predecessor = getContext().actorSelection(predecessorWindtalkerAddress);
-    RemoteActors remoteActors = new RemoteActors(localActors.getRole(), localActors.getActors());
 
-    predecessor.tell(remoteActors, getSelf());
-    windtalkerMessages.put(remoteActors.getId(), new MessageCache<>(predecessor, remoteActors));
+    predecessor.tell(message, getSelf());
+    windtalkerMessages.put(message.getId(), new MessageCache<>(predecessor, message));
 
-    LOGGER.debug("  Notified predecessor windtalker {}.", predecessorWindtalkerAddress);
+    LOGGER.debug("Notified windtalker {}.", predecessorWindtalkerAddress);
+  }
+
+  private void notifyAllMembers() {
+    LOGGER.info("Notifying all members...");
+    if (null == metricsCollectorActors || allMembers.isEmpty()) {
+      LOGGER.info("Skipped, metricsCollectorActors is null or members list is empty.");
+      return;
+    }
+
+    for (Member member : allMembers) {
+      notifyMemberWithMetricsCollector(member);
+    }
+    startResendingThread();
+    LOGGER.info("Notified all members, size: {}", allMembers.size());
+  }
+
+  private void notifyMemberWithMetricsCollector(Member member) {
+    notifyMember(member, new RemoteMetricsCollectorActors(metricsCollectorActors));
   }
 
   private void startResendingThread() {
     LOGGER.debug("Started resending thread.");
-    ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    scheduled = scheduler.scheduleWithFixedDelay(new Runnable() {
-
-      int maxEmptyLoop = 3;
-
-      @Override
-      public void run() {
-        int emptyLoop = 0;
-        if (windtalkerMessages.isEmpty()) {
-          if (++emptyLoop >= maxEmptyLoop) {
-            stopResendingThread();
-          }
-          return;
+    final int maxEmptyLoop = 3;
+    final int maxLoop = 5;
+    final MutableInt loopCount = new MutableInt(0);
+    scheduled = scheduler.scheduleWithFixedDelay(() -> {
+      int emptyLoop = 0;
+      if (windtalkerMessages.isEmpty()) {
+        if (++emptyLoop >= maxEmptyLoop) {
+          stopResendingThread();
         }
-        LOGGER.debug("Resending un-acked message, remains {}.", windtalkerMessages.size());
-        for (MessageCache<ActorSelection, RemoteActors> messageCache : windtalkerMessages.values()) {
-          messageCache.getDestination().tell(messageCache.getMessage(), getSelf());
-        }
+        return;
       }
-    }, 3, 3, TimeUnit.SECONDS);
+      LOGGER.debug("Resending un-acked {} message, remains {}.", windtalkerMessages.size(), maxLoop - loopCount.getValue());
+      for (MessageCache<ActorSelection, PipelineMessage> messageCache : windtalkerMessages.values()) {
+        messageCache.getDestination().tell(messageCache.getMessage(), getSelf());
+      }
+      if (loopCount.increase() >= maxLoop) {
+        clearWindtalkerMessages();
+        stopResendingThread();
+      }
+    }, 2, 2, TimeUnit.SECONDS);
+  }
+
+  private void clearWindtalkerMessages() {
+    windtalkerMessages.clear();
   }
 
   private void stopResendingThread() {
