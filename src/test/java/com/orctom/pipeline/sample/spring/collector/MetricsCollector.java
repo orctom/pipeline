@@ -7,7 +7,7 @@ import com.orctom.pipeline.sample.spring.service.DummyService;
 
 import javax.annotation.Resource;
 
-@Actor
+@Actor("metrics-collector")
 class MetricsCollector extends AbstractMetricsCollector {
 
   @Resource

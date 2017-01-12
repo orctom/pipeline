@@ -27,7 +27,7 @@ public abstract class ActorFactory {
     return Props.create(SpringActorProducer.class, ActorFactory.applicationContext, actorBeanType);
   }
 
-  public static ActorRef actorOf(Class<? extends UntypedActor> actorBeanType) {
+  public static synchronized ActorRef actorOf(Class<? extends UntypedActor> actorBeanType) {
     ActorRef actor = cache.computeIfAbsent(actorBeanType, ActorFactory::create);
     if (actor.isTerminated()) {
       actor = create(actorBeanType);

@@ -1,11 +1,8 @@
 package com.orctom.pipeline.util;
 
 import akka.actor.ActorRef;
-import com.google.common.base.Joiner;
 import com.orctom.laputa.model.Metric;
 import com.orctom.laputa.model.MetricCallback;
-import com.orctom.pipeline.Pipeline;
-import com.orctom.pipeline.model.PipelineMessage;
 import com.orctom.pipeline.model.PipelineMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,17 +15,12 @@ public class SimpleMetricCallback implements MetricCallback {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SimpleMetricCallback.class);
 
-  private static final SimpleMetricCallback INSTANCE = new SimpleMetricCallback();
-
   private Set<ActorRef> metricsCollectorActors = new HashSet<>();
 
-  private String roleName = Joiner.on(",").join(Pipeline.getInstance().getRoles());
+  private String roleName;
 
-  private SimpleMetricCallback() {
-  }
-
-  public static SimpleMetricCallback getInstance() {
-    return INSTANCE;
+  public SimpleMetricCallback(String roleName) {
+    this.roleName = roleName;
   }
 
   public void setMetricsCollectorActors(Set<ActorRef> metricsCollectorActors) {

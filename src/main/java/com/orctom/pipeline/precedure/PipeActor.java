@@ -4,7 +4,10 @@ import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
 import com.orctom.laputa.utils.SimpleMetrics;
-import com.orctom.pipeline.model.*;
+import com.orctom.pipeline.model.MessageAck;
+import com.orctom.pipeline.model.RemoteMetricsCollectorActors;
+import com.orctom.pipeline.model.SuccessorActor;
+import com.orctom.pipeline.model.Successors;
 import com.orctom.pipeline.util.RoleUtils;
 import com.orctom.pipeline.util.SimpleMetricCallback;
 import com.orctom.rmq.Ack;
@@ -12,7 +15,6 @@ import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQ;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Role;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -29,8 +31,7 @@ public abstract class PipeActor extends UntypedActor {
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
   private SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
-
-  private String role;
+  private SimpleMetricCallback callback;
 
   private Successors successors = new Successors(getContext(), getSelf(), metrics);
 
@@ -38,8 +39,13 @@ public abstract class PipeActor extends UntypedActor {
   public final void preStart() throws Exception {
     logger.debug("Staring actor: {}...", getSelf().toString());
     subscribeInbox();
-    metrics.setCallback(SimpleMetricCallback.getInstance());
+    initMetricsCollectorCallback();
     started();
+  }
+
+  private void initMetricsCollectorCallback() {
+    callback = new SimpleMetricCallback(getRole());
+    metrics.setCallback(callback);
   }
 
   protected void subscribeInbox() {
@@ -80,12 +86,12 @@ public abstract class PipeActor extends UntypedActor {
       for (ActorRef actorRef : msg.getActors()) {
         getContext().watch(actorRef);
       }
-      SimpleMetricCallback.getInstance().addCollectors(msg.getActors());
+      callback.addCollectors(msg.getActors());
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
       successors.remove(terminated.getActor());
-      SimpleMetricCallback.getInstance().removeCollector(terminated.getActor());
+      callback.removeCollector(terminated.getActor());
       logger.warn("Routee {} terminated.", terminated.getActor().toString());
 
     } else {
@@ -120,6 +126,10 @@ public abstract class PipeActor extends UntypedActor {
 
   private void logSuccessors() {
     metrics.setGaugeIfNotExist("routee", () -> successors.getRoles());
+  }
+
+  public String getRole() {
+    return RoleUtils.getRole(getClass()).getRole();
   }
 
   @Override

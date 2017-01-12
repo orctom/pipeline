@@ -1,7 +1,6 @@
 package com.orctom.pipeline.precedure;
 
 import akka.actor.UntypedActor;
-import com.orctom.laputa.model.Metric;
 import com.orctom.pipeline.model.PipelineMetrics;
 
 public abstract class AbstractMetricsCollector extends UntypedActor {

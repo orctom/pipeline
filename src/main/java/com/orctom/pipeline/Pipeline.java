@@ -5,7 +5,6 @@ import akka.cluster.Cluster;
 import akka.cluster.seed.ZookeeperClusterSeed;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
-import com.google.common.collect.Sets;
 import com.orctom.laputa.exception.ClassLoadingException;
 import com.orctom.laputa.exception.IllegalArgException;
 import com.orctom.laputa.utils.ClassUtils;
@@ -26,7 +25,9 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class Pipeline {
 
@@ -122,6 +123,10 @@ public class Pipeline {
             Role role = RoleUtils.getRole(clazz);
             roles.add(role.getRole());
             interestedRoles.addAll(role.getInterestedRoles());
+          }
+
+          if (AbstractMetricsCollector.class.isAssignableFrom(clazz)) {
+            roles.add(RoleUtils.getRole(clazz).getRole());
           }
         }
       } catch (ClassLoadingException e) {

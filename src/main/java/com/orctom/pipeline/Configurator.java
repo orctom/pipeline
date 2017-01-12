@@ -20,10 +20,10 @@ public class Configurator {
 
   public static Configurator getInstance(String nodeName, String roles) {
     if (Strings.isNullOrEmpty(nodeName)) {
-      throw new IllegalArgumentException("'nodeName' is expected but is null or empty.");
+      throw new IllegalArgumentException("Node name is empty, call 'withName(...)' on Pipeline to have it set.");
     }
     if (Strings.isNullOrEmpty(roles)) {
-      throw new IllegalArgumentException("'roles' is expected but is null or empty.");
+      throw new IllegalArgumentException("No actors found with annotation 'Actor' and its attribute 'role' is set.");
     }
 
     return new Configurator(nodeName, roles);

@@ -8,7 +8,7 @@ public class InboxConsumer implements RMQConsumer {
 
   private PipeActor actor;
 
-  public InboxConsumer(PipeActor actor) {
+  InboxConsumer(PipeActor actor) {
     this.actor = actor;
   }
 
