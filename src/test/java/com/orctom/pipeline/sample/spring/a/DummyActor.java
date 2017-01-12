@@ -45,6 +45,6 @@ public class DummyActor extends UntypedActor {
 
   @Override
   public void onReceive(Object message) throws Throwable {
-    System.out.println(message);
+    unhandled(message);
   }
 }

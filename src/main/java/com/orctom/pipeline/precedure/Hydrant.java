@@ -12,7 +12,6 @@ public abstract class Hydrant extends PipeActor implements Runnable {
   @Override
   protected final void started() {
     new Thread(this).start();
-    System.out.println("started thread");
   }
 
   @Override

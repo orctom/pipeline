@@ -5,12 +5,16 @@ import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.actor.UntypedActor;
 import com.orctom.pipeline.util.SpringActorProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public abstract class ActorFactory {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ActorFactory.class);
 
   private static ApplicationContext applicationContext;
   private static Map<Class<? extends UntypedActor>, ActorRef> cache = new HashMap<>();
@@ -35,7 +39,7 @@ public abstract class ActorFactory {
   private static ActorRef create(Class<? extends UntypedActor> actorBeanType) {
     ActorSystem actorSystem = applicationContext.getBean(ActorSystem.class);
     String name = firstCharLowerCased(actorBeanType.getSimpleName());
-    System.out.println("name: = " + name + ", clazz = " + actorBeanType);
+    LOGGER.info("Created actor: {} of type: {}", name, actorBeanType);
     return actorSystem.actorOf(propsOf(actorBeanType), name);
   }
 

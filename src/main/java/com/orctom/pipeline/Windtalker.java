@@ -192,7 +192,6 @@ class Windtalker extends UntypedActor {
 
   private boolean isMemberCurrentRole(Member member) {
     Set<String> roles = Pipeline.getInstance().getRoles();
-    System.out.println("roles of the member: " + member.getRoles());
     for (String role : roles) {
       if (member.hasRole(role)) {
         return true;
