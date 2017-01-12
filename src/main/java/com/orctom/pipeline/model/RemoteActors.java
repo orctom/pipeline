@@ -2,8 +2,8 @@ package com.orctom.pipeline.model;
 
 import akka.actor.ActorRef;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * When <code>windtalker</code> receives this message from remote <code>windtalkers</code>,<br/>
@@ -13,20 +13,14 @@ import java.util.List;
  */
 public class RemoteActors extends PipelineMessage {
 
-  private String role;
-  private List<ActorRef> actors = new ArrayList<>();
+  private Map<ActorRef, Role> actors = new HashMap<>();
 
-  public RemoteActors(String role, List<ActorRef> actors) {
+  public RemoteActors(Map<ActorRef, Role> actors) {
     super();
-    this.role = role;
     this.actors = actors;
   }
 
-  public String getRole() {
-    return role;
-  }
-
-  public List<ActorRef> getActors() {
+  public Map<ActorRef, Role> getActors() {
     return actors;
   }
 }

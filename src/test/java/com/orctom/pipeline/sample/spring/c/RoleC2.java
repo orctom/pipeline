@@ -8,8 +8,8 @@ import com.orctom.rmq.Message;
 
 import javax.annotation.Resource;
 
-@Actor(role = "roleC", interestedRoles = "roleB")
-class RoleC extends Outlet {
+@Actor(role = "roleC2", interestedRoles = "roleB2")
+class RoleC2 extends Outlet {
 
   @Resource
   private DummyService service;

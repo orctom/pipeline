@@ -34,19 +34,19 @@ class Windtalker extends UntypedActor {
   private List<ActorRef> metricsCollectorActors;
   private Queue<Member> allMembers = new LinkedList<>();
 
-  private Set<String> predecessors;
+  private Set<String> interestedRoles;
 
   private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
   private Map<String, MessageCache<ActorSelection, PipelineMessage>> windtalkerMessages = new ConcurrentHashMap<>();
   private ScheduledFuture<?> scheduled;
 
-  public Windtalker(Set<String> predecessors) {
-    this.predecessors = predecessors;
+  Windtalker(Set<String> interestedRoles) {
+    this.interestedRoles = interestedRoles;
   }
 
   @Override
   public void preStart() throws Exception {
-    LOGGER.debug("Staring Windtalker... {}", hasPredecessors() ? (predecessors + " -> this") : "as [Hydrant]");
+    LOGGER.debug("Staring Windtalker... {}", hasPredecessors() ? (interestedRoles + " -> this") : "as [Hydrant]");
 
     cluster.subscribe(getSelf(), MemberUp.class);
     startResendingThread();
@@ -58,7 +58,7 @@ class Windtalker extends UntypedActor {
   }
 
   private boolean hasPredecessors() {
-    return null != predecessors && !predecessors.isEmpty();
+    return null != interestedRoles && !interestedRoles.isEmpty();
   }
 
   @Override
@@ -126,7 +126,7 @@ class Windtalker extends UntypedActor {
       return;
     }
 
-    for (ActorRef localActor : localActors.getActors()) {
+    for (ActorRef localActor : localActors.getActors().keySet()) {
       localActor.tell(remoteMetricsCollectorActors, getSelf());
       LOGGER.debug("Informed: {} with metrics-collector.", localActor);
     }
@@ -139,9 +139,18 @@ class Windtalker extends UntypedActor {
       return;
     }
 
-    for (ActorRef localActor : localActors.getActors()) {
-      localActor.tell(remoteActors, getSelf());
-      LOGGER.debug("Informed: {}.", localActor);
+    for (Map.Entry<ActorRef, Role> localActor : localActors.getActors().entrySet()) {
+      String role = localActor.getValue().getRole();
+      for (Map.Entry<ActorRef, Role> remoteActor : remoteActors.getActors().entrySet()) {
+        Set<String> remoteActorInterestedRoles = remoteActor.getValue().getInterestedRoles();
+        if (remoteActorInterestedRoles.contains(role)) {
+          localActor.getKey().tell(
+              new SuccessorActor(remoteActor.getValue().getRole(), remoteActor.getKey()),
+              getSelf()
+          );
+          LOGGER.debug("Informed: {} of {}.", localActor, remoteActor);
+        }
+      }
     }
   }
 
@@ -164,12 +173,12 @@ class Windtalker extends UntypedActor {
       allMembers.add(member);
     }
 
-    if (null == predecessors) {
+    if (null == interestedRoles) {
       LOGGER.debug("Skipped predecessor notifications for Hydrant.");
       return;
     }
 
-    for (String role : predecessors) {
+    for (String role : interestedRoles) {
       if (member.hasRole(role)) {
         if (isLocalActorsEmpty()) {
           predecessorMembers.offer(member);
@@ -182,11 +191,18 @@ class Windtalker extends UntypedActor {
   }
 
   private boolean isMemberCurrentRole(Member member) {
-    return member.hasRole(Pipeline.getInstance().getRole());
+    Set<String> roles = Pipeline.getInstance().getRoles();
+    System.out.println("roles of the member: " + member.getRoles());
+    for (String role : roles) {
+      if (member.hasRole(role)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private RemoteActors createRemoteActorsMessage() {
-    return new RemoteActors(localActors.getRole(), localActors.getActors());
+    return new RemoteActors(localActors.getActors());
   }
 
   private void notifyMember(Member member, PipelineMessage message) {

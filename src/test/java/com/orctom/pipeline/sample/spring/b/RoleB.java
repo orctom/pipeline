@@ -8,7 +8,7 @@ import com.orctom.rmq.Message;
 
 import javax.annotation.Resource;
 
-@Actor
+@Actor(role="roleB", interestedRoles = "roleA")
 class RoleB extends Pipe {
 
   @Resource

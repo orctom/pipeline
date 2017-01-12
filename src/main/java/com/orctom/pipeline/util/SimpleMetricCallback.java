@@ -1,6 +1,7 @@
 package com.orctom.pipeline.util;
 
 import akka.actor.ActorRef;
+import com.google.common.base.Joiner;
 import com.orctom.laputa.model.Metric;
 import com.orctom.laputa.model.MetricCallback;
 import com.orctom.pipeline.Pipeline;
@@ -21,7 +22,7 @@ public class SimpleMetricCallback implements MetricCallback {
 
   private Set<ActorRef> metricsCollectorActors = new HashSet<>();
 
-  private String roleName = Pipeline.getInstance().getRole();
+  private String roleName = Joiner.on(",").join(Pipeline.getInstance().getRoles());
 
   private SimpleMetricCallback() {
   }

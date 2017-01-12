@@ -14,8 +14,7 @@ public class MetricsCollectorApplication {
   public static void main(String[] args) {
     Pipeline.getInstance()
         .withCluster("dummy")
-        .withRole("collector")
-        .withPredecessors("nothing")
+        .withName("collector")
         .run(MetricsCollectorApplication.class);
   }
 }

@@ -4,16 +4,15 @@ import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
 import com.orctom.laputa.utils.SimpleMetrics;
-import com.orctom.pipeline.model.MessageAck;
-import com.orctom.pipeline.model.RemoteActors;
-import com.orctom.pipeline.model.RemoteMetricsCollectorActors;
-import com.orctom.pipeline.model.Successors;
+import com.orctom.pipeline.model.*;
+import com.orctom.pipeline.util.RoleUtils;
 import com.orctom.pipeline.util.SimpleMetricCallback;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQ;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Role;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -30,6 +29,8 @@ public abstract class PipeActor extends UntypedActor {
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
   private SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
+
+  private String role;
 
   private Successors successors = new Successors(getContext(), getSelf(), metrics);
 
@@ -68,10 +69,10 @@ public abstract class PipeActor extends UntypedActor {
       MessageAck msg = (MessageAck) message;
       RMQ.getInstance().delete(Q_SENT, msg.getId());
 
-    } else if (message instanceof RemoteActors) { // from windtalker
-      RemoteActors remoteActors = (RemoteActors) message;
-      logger.debug("Linked with successor {}: {}", remoteActors.getRole(), remoteActors.getActors());
-      addSuccessors(remoteActors.getRole(), remoteActors.getActors());
+    } else if (message instanceof SuccessorActor) { // from windtalker
+      SuccessorActor successorActor = (SuccessorActor) message;
+      logger.debug("Linked with successor {}: {}", successorActor.getRole(), successorActor.getActor());
+      addSuccessor(successorActor.getRole(), successorActor.getActor());
 
     } else if (message instanceof RemoteMetricsCollectorActors) { // from windtalker
       logger.info("Received metrics-collector");

@@ -3,6 +3,7 @@ package com.orctom.pipeline;
 import akka.actor.*;
 import akka.cluster.Cluster;
 import akka.cluster.seed.ZookeeperClusterSeed;
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import com.orctom.laputa.exception.ClassLoadingException;
@@ -11,10 +12,11 @@ import com.orctom.laputa.utils.ClassUtils;
 import com.orctom.pipeline.annotation.Actor;
 import com.orctom.pipeline.model.LocalActors;
 import com.orctom.pipeline.model.LocalMetricsCollectorActors;
+import com.orctom.pipeline.model.Role;
 import com.orctom.pipeline.precedure.AbstractMetricsCollector;
 import com.orctom.pipeline.precedure.PipeActor;
-import com.orctom.pipeline.util.ActorFactory;
 import com.orctom.pipeline.util.IdUtils;
+import com.orctom.pipeline.util.RoleUtils;
 import com.orctom.rmq.RMQOptions;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
@@ -24,9 +26,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class Pipeline {
 
@@ -35,13 +35,14 @@ public class Pipeline {
   private static final Pipeline INSTANCE = new Pipeline();
 
   private String cluster;
-  private String role;
-  private Set<String> predecessors;
+  private String name;
+  private Set<String> roles = new HashSet<>();
+  private Set<String> interestedRoles = new HashSet<>();
   private String[] basePackages;
   private AnnotationConfigApplicationContext applicationContext;
   private ActorSystem system;
 
-  private List<ActorRef> actors = new ArrayList<>();
+  private LocalActors actors = new LocalActors();
   private LocalMetricsCollectorActors metricsCollectors = new LocalMetricsCollectorActors();
 
   private Pipeline() {
@@ -56,14 +57,9 @@ public class Pipeline {
     return this;
   }
 
-  public Pipeline withRole(String role) {
-    this.role = role;
-    RMQOptions.getInstance().setId(role);
-    return this;
-  }
-
-  public Pipeline withPredecessors(String... predecessors) {
-    this.predecessors = Sets.newHashSet(predecessors);
+  public Pipeline withName(String name) {
+    this.name = name;
+    RMQOptions.getInstance().setId(name);
     return this;
   }
 
@@ -72,8 +68,9 @@ public class Pipeline {
     validate();
     validate(configurationClass);
     createApplicationContext(configurationClass);
+    Set<Class<? extends UntypedActor>> untypedActorTypes = collectRolesFromPipeActors();
     createActorSystem();
-    registerActors();
+    createActors(untypedActorTypes);
     start();
   }
 
@@ -81,8 +78,8 @@ public class Pipeline {
     if (Strings.isNullOrEmpty(cluster)) {
       throw new IllegalArgException("`cluster` is required.");
     }
-    if (Strings.isNullOrEmpty(role)) {
-      throw new IllegalArgException("`role` is required.");
+    if (Strings.isNullOrEmpty(name)) {
+      throw new IllegalArgException("`name` is required.");
     }
   }
 
@@ -100,39 +97,16 @@ public class Pipeline {
     } else {
       basePackages = componentScan.basePackages();
     }
-
   }
 
   private void createApplicationContext(Class<?> configurationClass) {
     applicationContext = new AnnotationConfigApplicationContext(configurationClass);
-  }
-
-  private void createActorSystem() {
-    Config config = Configurator.getInstance(role).getConfig();
-    system = ActorSystem.create(cluster, config);
-
-    register("system", system);
-  }
-
-  private void register(String name, Object bean) {
-    String beanName = lowerCasedFirstChar(name);
-    applicationContext.getBeanFactory().registerSingleton(name, bean);
-    LOGGER.debug("registered {}: {} to spring context", name, bean.getClass());
-//    applicationContext.getBeanFactory().registerSingleton(beanName, bean);
-//    LOGGER.debug("registered {}: {} to spring context", beanName, bean.getClass());
-  }
-
-  private String lowerCasedFirstChar(String name) {
-    char c[] = name.toCharArray();
-    c[0] += 32;
-    return new String(c);
+    ActorFactory.setApplicationContext(applicationContext);
   }
 
   @SuppressWarnings("unchecked")
-  private void registerActors() {
-    ActorFactory actorFactory = new ActorFactory(applicationContext);
-    register("actorFactory", actorFactory);
-
+  private Set<Class<? extends UntypedActor>> collectRolesFromPipeActors() {
+    Set<Class<? extends UntypedActor>> untypedActorTypes = new HashSet<>();
     for (String basePackage : basePackages) {
       try {
         List<Class<?>> classes = ClassUtils.getClassesWithAnnotation(basePackage, Actor.class);
@@ -141,21 +115,49 @@ public class Pipeline {
             LOGGER.error("{} is not an UntypedActor.", clazz);
             continue;
           }
-          ActorRef actor = actorFactory.create((Class<? extends UntypedActor>) clazz);
-          register(clazz.getSimpleName(), actor);
+
+          untypedActorTypes.add((Class<? extends UntypedActor>) clazz);
 
           if (PipeActor.class.isAssignableFrom(clazz)) {
-            LOGGER.info("Found role: {}", clazz);
-            actors.add(actor);
-          }
-
-          if (AbstractMetricsCollector.class.isAssignableFrom(clazz)) {
-            LOGGER.info("Found MetricsCenterActor: {}", actor);
-            metricsCollectors.add(actor);
+            Role role = RoleUtils.getRole(clazz);
+            roles.add(role.getRole());
+            interestedRoles.addAll(role.getInterestedRoles());
           }
         }
       } catch (ClassLoadingException e) {
         LOGGER.error(e.getMessage(), e);
+      }
+    }
+
+    return untypedActorTypes;
+  }
+
+  private void createActorSystem() {
+    LOGGER.info("Bootstrapping {} with roles of {}", name, roles);
+    Config config = Configurator.getInstance(name, Joiner.on(',').join(roles)).getConfig();
+    system = ActorSystem.create(cluster, config);
+
+    register("system", system);
+  }
+
+  private void register(String name, Object bean) {
+    applicationContext.getBeanFactory().registerSingleton(name, bean);
+    LOGGER.debug("registered {}: {} to spring context", name, bean.getClass());
+  }
+
+  private void createActors(Set<Class<? extends UntypedActor>> untypedActorTypes) {
+    for (Class<? extends UntypedActor> actorType : untypedActorTypes) {
+      // start the actor
+      ActorRef actor = ActorFactory.actorOf(actorType);
+
+      if (PipeActor.class.isAssignableFrom(actorType)) {
+        LOGGER.info("Found pipeline actor: {}", actorType);
+        actors.addActor(actor, RoleUtils.getRole(actorType));
+      }
+
+      if (AbstractMetricsCollector.class.isAssignableFrom(actorType)) {
+        LOGGER.info("Found MetricsCenterActor: {}", actorType);
+        metricsCollectors.add(actor);
       }
     }
   }
@@ -169,12 +171,12 @@ public class Pipeline {
   }
 
   private void onStartup() {
-    ActorRef windtalker = system.actorOf(Props.create(Windtalker.class, predecessors), Windtalker.NAME);
-    windtalker.tell(new LocalActors(role, actors), ActorRef.noSender());
+    ActorRef windtalker = system.actorOf(Props.create(Windtalker.class, interestedRoles), Windtalker.NAME);
+    windtalker.tell(actors, ActorRef.noSender());
     if (!metricsCollectors.getActors().isEmpty()) {
       windtalker.tell(metricsCollectors, ActorRef.noSender());
     }
-    LOGGER.debug("[{}] started.", role);
+    LOGGER.debug("[{}] started.", name);
   }
 
   private void registerOnRemoved() {
@@ -189,15 +191,19 @@ public class Pipeline {
     return applicationContext;
   }
 
+  public ActorSystem getSystem() {
+    return system;
+  }
+
   public String getCluster() {
     return cluster;
   }
 
-  public String getRole() {
-    return role;
+  public String getName() {
+    return name;
   }
 
-  public ActorSystem getSystem() {
-    return system;
+  public Set<String> getRoles() {
+    return roles;
   }
 }
