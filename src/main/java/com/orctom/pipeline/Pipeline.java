@@ -14,6 +14,7 @@ import com.orctom.pipeline.model.LocalMetricsCollectorActors;
 import com.orctom.pipeline.model.Role;
 import com.orctom.pipeline.precedure.AbstractMetricsCollector;
 import com.orctom.pipeline.precedure.PipeActor;
+import com.orctom.pipeline.util.AnnotationUtils;
 import com.orctom.pipeline.util.IdUtils;
 import com.orctom.pipeline.util.RoleUtils;
 import com.orctom.rmq.RMQOptions;
@@ -25,6 +26,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -88,15 +90,27 @@ public class Pipeline {
     if (null == configurationClass) {
       throw new IllegalArgException("Null class to 'run()'!");
     }
-    if (!configurationClass.isAnnotationPresent(Configuration.class)) {
+    validateIfConfigurationPresent(configurationClass);
+    validateAndRetrieveBasePackages(configurationClass);
+  }
+
+  private void validateIfConfigurationPresent(Class<?> configurationClass) {
+    Configuration configuration = AnnotationUtils.getMetaAnnotation(configurationClass, Configuration.class);
+    if (null == configuration) {
       throw new IllegalArgException("@Configuration is expected on class: " + configurationClass);
     }
+  }
 
-    ComponentScan componentScan = configurationClass.getAnnotation(ComponentScan.class);
+  private void validateAndRetrieveBasePackages(Class<?> configurationClass) {
+    ComponentScan componentScan = AnnotationUtils.getMetaAnnotation(configurationClass, ComponentScan.class);
     if (null == componentScan) {
       throw new IllegalArgException("@ComponentScan is expected on class: " + configurationClass);
     } else {
       basePackages = componentScan.basePackages();
+      if (0 == basePackages.length) {
+        basePackages = new String[]{configurationClass.getPackage().getName()};
+      }
+      LOGGER.info("basePackages: {}", Arrays.toString(basePackages));
     }
   }
 
