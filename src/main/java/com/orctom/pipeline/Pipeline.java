@@ -25,6 +25,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.GenericApplicationContext;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -42,7 +43,7 @@ public class Pipeline {
   private Set<String> roles = new HashSet<>();
   private Set<String> interestedRoles = new HashSet<>();
   private String[] basePackages;
-  private AnnotationConfigApplicationContext applicationContext;
+  private ApplicationContext applicationContext;
   private ActorSystem system;
 
   private LocalActors actors = new LocalActors();
@@ -66,11 +67,16 @@ public class Pipeline {
     return this;
   }
 
+  public Pipeline withApplicationContext(ApplicationContext applicationContext) {
+    this.applicationContext = applicationContext;
+    return this;
+  }
+
   public void run(Class<?> configurationClass) {
     IdUtils.generate();
     validate();
     validate(configurationClass);
-    createApplicationContext(configurationClass);
+    createApplicationContextIfNotSet(configurationClass);
     Set<Class<? extends UntypedActor>> untypedActorTypes = collectRolesFromPipeActors();
     createActorSystem();
     createActors(untypedActorTypes);
@@ -114,8 +120,11 @@ public class Pipeline {
     }
   }
 
-  private void createApplicationContext(Class<?> configurationClass) {
-    applicationContext = new AnnotationConfigApplicationContext(configurationClass);
+  private void createApplicationContextIfNotSet(Class<?> configurationClass) {
+    if (null == applicationContext) {
+      applicationContext = new AnnotationConfigApplicationContext(configurationClass);
+    }
+
     ActorFactory.setApplicationContext(applicationContext);
   }
 
@@ -156,12 +165,8 @@ public class Pipeline {
     Config config = Configurator.getInstance(name, Joiner.on(',').join(roles)).getConfig();
     system = ActorSystem.create(cluster, config);
 
-    register("system", system);
-  }
-
-  private void register(String name, Object bean) {
-    applicationContext.getBeanFactory().registerSingleton(name, bean);
-    LOGGER.debug("registered {}: {} to spring context", name, bean.getClass());
+    GenericApplicationContext context = ((GenericApplicationContext) applicationContext);
+    context.getBeanFactory().registerSingleton("system", system);
   }
 
   private void createActors(Set<Class<? extends UntypedActor>> untypedActorTypes) {
