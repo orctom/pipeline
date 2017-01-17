@@ -39,7 +39,7 @@ public class Pipeline {
   private static final Pipeline INSTANCE = new Pipeline();
 
   private String cluster;
-  private String name;
+  private String applicationName;
   private Set<String> roles = new HashSet<>();
   private Set<String> interestedRoles = new HashSet<>();
   private String[] basePackages;
@@ -61,8 +61,8 @@ public class Pipeline {
     return this;
   }
 
-  public Pipeline withName(String name) {
-    this.name = name;
+  public Pipeline withApplicationName(String name) {
+    this.applicationName = name;
     RMQOptions.getInstance().setId(name);
     return this;
   }
@@ -87,8 +87,8 @@ public class Pipeline {
     if (Strings.isNullOrEmpty(cluster)) {
       throw new IllegalArgException("`cluster` is required.");
     }
-    if (Strings.isNullOrEmpty(name)) {
-      throw new IllegalArgException("`name` is required.");
+    if (Strings.isNullOrEmpty(applicationName)) {
+      throw new IllegalArgException("`applicationName` is required.");
     }
   }
 
@@ -161,8 +161,8 @@ public class Pipeline {
   }
 
   private void createActorSystem() {
-    LOGGER.info("Bootstrapping {} with roles of {}", name, roles);
-    Config config = Configurator.getInstance(name, Joiner.on(',').join(roles)).getConfig();
+    LOGGER.info("Bootstrapping {} with roles of {}", applicationName, roles);
+    Config config = Configurator.getInstance(applicationName, Joiner.on(',').join(roles)).getConfig();
     system = ActorSystem.create(cluster, config);
 
     GenericApplicationContext context = ((GenericApplicationContext) applicationContext);
@@ -200,7 +200,7 @@ public class Pipeline {
     if (!metricsCollectors.getActors().isEmpty()) {
       windtalker.tell(metricsCollectors, ActorRef.noSender());
     }
-    LOGGER.debug("[{}] started.", name);
+    LOGGER.debug("[{}] started.", applicationName);
   }
 
   private void registerOnRemoved() {
@@ -223,8 +223,8 @@ public class Pipeline {
     return cluster;
   }
 
-  public String getName() {
-    return name;
+  public String getApplicationName() {
+    return applicationName;
   }
 
   public Set<String> getRoles() {

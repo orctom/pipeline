@@ -6,6 +6,7 @@ import java.io.Serializable;
 
 public class PipelineMetrics extends Metric implements Serializable {
 
+  private String applicationName;
   private String role;
   private long timestamp;
 
@@ -13,10 +14,19 @@ public class PipelineMetrics extends Metric implements Serializable {
     this.timestamp = System.currentTimeMillis();
   }
 
-  public PipelineMetrics(String role, Metric metric) {
+  public PipelineMetrics(String applicationName, String role, Metric metric) {
     super(metric);
+    this.applicationName = applicationName;
     this.role = role;
     this.timestamp = System.currentTimeMillis();
+  }
+
+  public String getApplicationName() {
+    return applicationName;
+  }
+
+  public void setApplicationName(String applicationName) {
+    this.applicationName = applicationName;
   }
 
   public String getRole() {
@@ -38,7 +48,8 @@ public class PipelineMetrics extends Metric implements Serializable {
   @Override
   public String toString() {
     return "PipelineMetrics{" +
-        "role='" + role + '\'' +
+        "applicationName='" + applicationName + '\'' +
+        ", role='" + role + '\'' +
         ", timestamp=" + timestamp +
         "} " + super.toString();
   }
