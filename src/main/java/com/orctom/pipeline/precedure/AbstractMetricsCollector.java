@@ -15,7 +15,7 @@ import static com.orctom.pipeline.Constants.MEMBER_EVENT_UP;
 
 public abstract class AbstractMetricsCollector extends UntypedActor {
 
-  private Map<ActorRef, MemberInfo> members = new HashMap<>();
+  protected Map<ActorRef, MemberInfo> members = new HashMap<>();
 
   @Override
   public final void onReceive(Object message) throws Throwable {
