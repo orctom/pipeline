@@ -32,7 +32,7 @@ class Windtalker extends UntypedActor {
   private Queue<Member> predecessorMembers = new LinkedList<>();
 
   private List<ActorRef> metricsCollectorActors;
-  private Queue<Member> allMembers = new LinkedList<>();
+  private List<Member> allMembers = new ArrayList<>();
 
   private Set<String> interestedRoles;
 

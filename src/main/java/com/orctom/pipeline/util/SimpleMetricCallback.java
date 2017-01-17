@@ -19,9 +19,11 @@ public class SimpleMetricCallback implements MetricCallback {
   private Set<ActorRef> metricsCollectorActors = new HashSet<>();
 
   private String roleName;
+  private String applicationName;
 
   public SimpleMetricCallback(String roleName) {
     this.roleName = roleName;
+    applicationName = Pipeline.getInstance().getApplicationName();
   }
 
   public void setMetricsCollectorActors(Set<ActorRef> metricsCollectorActors) {
@@ -36,11 +38,9 @@ public class SimpleMetricCallback implements MetricCallback {
       return;
     }
 
-    PipelineMetrics pm = new PipelineMetrics(Pipeline.getInstance().getApplicationName(), roleName, metric);
+    PipelineMetrics pm = new PipelineMetrics(applicationName, roleName, metric);
     LOGGER.debug("onMetric: {}", metric);
-    for (ActorRef actor : metricsCollectorActors) {
-      actor.tell(pm, ActorRef.noSender());
-    }
+    sendToMetricsCollectors(pm);
   }
 
   public void addCollectors(List<ActorRef> actors) {
@@ -51,5 +51,11 @@ public class SimpleMetricCallback implements MetricCallback {
   public void removeCollector(ActorRef actor) {
     LOGGER.info("metrics collector added: {}.", actor);
     metricsCollectorActors.remove(actor);
+  }
+
+  private void sendToMetricsCollectors(PipelineMetrics pm) {
+    for (ActorRef actor : metricsCollectorActors) {
+      actor.tell(pm, ActorRef.noSender());
+    }
   }
 }
