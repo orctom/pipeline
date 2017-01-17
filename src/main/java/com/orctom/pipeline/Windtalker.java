@@ -8,6 +8,7 @@ import akka.cluster.ClusterEvent.CurrentClusterState;
 import akka.cluster.ClusterEvent.MemberUp;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
+import com.google.common.base.Joiner;
 import com.orctom.laputa.utils.MutableInt;
 import com.orctom.pipeline.model.*;
 import org.slf4j.Logger;
@@ -22,9 +23,9 @@ import java.util.concurrent.*;
  */
 class Windtalker extends UntypedActor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Windtalker.class);
-
   static final String NAME = "windtalker";
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(Windtalker.class);
 
   private Cluster cluster = Cluster.get(getContext().system());
 
@@ -84,11 +85,22 @@ class Windtalker extends UntypedActor {
       LOGGER.debug("Got a list of RemoteMetricsCenterActors: {}.", remoteMetricsCollectorActors.getActors());
       informLocalActors(remoteMetricsCollectorActors);
       getSender().tell(new MessageAck(remoteMetricsCollectorActors.getId()), getSelf());
+      notifyMetricsCollectorsWithMemberInfo(getSender());
 
     } else if (message instanceof MessageAck) { // from successors windtalker
       LOGGER.debug("Got ack from predecessor: {}.", getSender());
       MessageAck ack = (MessageAck) message;
       windtalkerMessages.remove(ack.getId());
+
+    } else if (message instanceof MemberInfo) { // remote non-metrics-collector windtalkers -> local metrics-collector
+      if (null == metricsCollectorActors) {
+        LOGGER.warn("Local metrics collectors for a Metrics-Collection app.");
+        return;
+      }
+      MemberInfo memberInfo = (MemberInfo) message;
+      for (ActorRef metricsCollectorActor : metricsCollectorActors) {
+        metricsCollectorActor.tell(memberInfo, getSender());
+      }
 
     } else if (message instanceof CurrentClusterState) {
       LOGGER.trace("Processing CurrentClusterState event.");
@@ -156,6 +168,15 @@ class Windtalker extends UntypedActor {
 
   private boolean isLocalActorsEmpty() {
     return null == localActors || null == localActors.getActors() || localActors.getActors().isEmpty();
+  }
+
+  private void notifyMetricsCollectorsWithMemberInfo(ActorRef destination) {
+    Pipeline pipeline = Pipeline.getInstance();
+    MemberInfo memberInfo = new MemberInfo(
+        pipeline.getApplicationName(),
+        Joiner.on(',').join(pipeline.getRoles()));
+
+    destination.tell(memberInfo, getSelf());
   }
 
   private void registerMember(Member member) {
