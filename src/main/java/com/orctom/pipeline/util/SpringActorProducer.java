@@ -8,14 +8,14 @@ import org.springframework.context.ApplicationContext;
 public class SpringActorProducer implements IndirectActorProducer {
 
   private final ApplicationContext applicationContext;
-  private final Class<? extends Actor> actorBeanType;
+  private final String actorBeanName;
 
-  public SpringActorProducer(ApplicationContext applicationContext, Class<? extends Actor> actorBeanType) {
+  public SpringActorProducer(ApplicationContext applicationContext, String actorBeanName) {
     verify(applicationContext, "applicationContext");
-    verify(actorBeanType, "actorBeanType");
+    verify(actorBeanName, "actorBeanName");
 
     this.applicationContext = applicationContext;
-    this.actorBeanType = actorBeanType;
+    this.actorBeanName = actorBeanName;
   }
 
   private void verify(Object obj, String name) {
@@ -26,12 +26,12 @@ public class SpringActorProducer implements IndirectActorProducer {
 
   @Override
   public Actor produce() {
-    return applicationContext.getBean(actorBeanType);
+    return (Actor) applicationContext.getBean(actorBeanName);
   }
 
   @SuppressWarnings("unchecked")
   @Override
   public Class<? extends Actor> actorClass() {
-    return actorBeanType;
+    return (Class<? extends Actor>) applicationContext.getType(actorBeanName);
   }
 }

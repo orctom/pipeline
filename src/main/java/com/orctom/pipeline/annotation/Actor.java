@@ -12,6 +12,7 @@ import java.lang.annotation.*;
 @Scope("prototype")
 @Component
 public @interface Actor {
+
   @AliasFor("value")
   String role() default "";
 
