@@ -31,12 +31,15 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 public class Pipeline {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Pipeline.class);
 
   private static final Pipeline INSTANCE = new Pipeline();
+
+  private static final Pattern PATTERN_NAME = Pattern.compile("[0-9a-zA-Z-_]+");
 
   private String cluster;
   private String applicationName;
@@ -57,14 +60,22 @@ public class Pipeline {
   }
 
   public Pipeline withCluster(String cluster) {
+    validateName(cluster);
     this.cluster = cluster;
     return this;
   }
 
-  public Pipeline withApplicationName(String name) {
-    this.applicationName = name;
-    RMQOptions.getInstance().setId(name);
+  public Pipeline withApplicationName(String applicationName) {
+    validateName(applicationName);
+    this.applicationName = applicationName;
+    RMQOptions.getInstance().setId(applicationName);
     return this;
+  }
+
+  private void validateName(String name) {
+    if (!PATTERN_NAME.matcher(name).matches()) {
+      throw new IllegalArgException("Illegal name: " + name + ", only allows '0-9', 'a-z', 'A-Z', '-' and '_'");
+    }
   }
 
   public Pipeline withApplicationContext(ApplicationContext applicationContext) {
