@@ -24,13 +24,17 @@ public abstract class AbstractMetricsCollector extends UntypedActor {
 
     } else if (message instanceof MemberInfo) {
       MemberInfo memberInfo = (MemberInfo) message;
-      members.put(getSender(), memberInfo);
+      ActorRef actor = getSender();
+      members.put(actor, memberInfo);
+      memberAdded(actor, memberInfo);
       onMessage(createPipelineMetrics(memberInfo, MEMBER_EVENT_UP));
       getContext().watch(getSender());
 
     } else if (message instanceof Terminated) {
       Terminated terminated = (Terminated) message;
-      MemberInfo memberInfo = members.remove(terminated.getActor());
+      ActorRef terminatedActor = terminated.getActor();
+      MemberInfo memberInfo = members.remove(terminatedActor);
+      memberRemoved(terminatedActor);
       if (null != memberInfo) {
         onMessage(createPipelineMetrics(memberInfo, MEMBER_EVENT_DOWN));
       }
@@ -48,5 +52,11 @@ public abstract class AbstractMetricsCollector extends UntypedActor {
     );
   }
 
-  public abstract void onMessage(PipelineMetrics metric);
+  protected void memberAdded(ActorRef actor, MemberInfo memberInfo) {
+  }
+
+  protected void memberRemoved(ActorRef actorRef) {
+  }
+
+  protected abstract void onMessage(PipelineMetrics metric);
 }
