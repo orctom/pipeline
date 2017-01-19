@@ -7,6 +7,7 @@ import com.orctom.pipeline.annotation.Actor;
 import com.orctom.pipeline.util.IdUtils;
 import com.orctom.rmq.Message;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.RandomUtils;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,7 +25,7 @@ public class DummyActor extends UntypedActor {
     System.out.println("started dummy ...........");
     ExecutorService es = Executors.newSingleThreadExecutor();
     es.submit(() -> {
-      for (int i = 0; i < 30; i++) {
+      for (int i = 0; i < 1_000_000; i++) {
         Message msg = new Message(
             IdUtils.generate(),
             RandomStringUtils.randomAlphanumeric(400).getBytes()
@@ -35,7 +36,7 @@ public class DummyActor extends UntypedActor {
           roleA2.tell(msg, getSelf());
         }
         try {
-          TimeUnit.MILLISECONDS.sleep(3000);
+          TimeUnit.MILLISECONDS.sleep(RandomUtils.nextLong(50, 500));
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
