@@ -13,6 +13,7 @@ import com.orctom.pipeline.util.SimpleMetricCallback;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQ;
+import com.orctom.rmq.RMQOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,8 +33,9 @@ public abstract class PipeActor extends UntypedActor {
 
   private SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
   private SimpleMetricCallback callback;
+  private RMQ rmq = RMQ.getInstance(new RMQOptions(getRole()));
 
-  private Successors successors = new Successors(getContext(), getSelf(), metrics);
+  private Successors successors = new Successors(getContext(), getSelf(), rmq, metrics);
 
   @Override
   public final void preStart() throws Exception {
@@ -49,7 +51,7 @@ public abstract class PipeActor extends UntypedActor {
   }
 
   protected void subscribeInbox() {
-    RMQ.getInstance().subscribe(Q_INBOX, new InboxConsumer(this));
+    rmq.subscribe(Q_INBOX, new InboxConsumer(this));
   }
 
   /**
@@ -60,7 +62,7 @@ public abstract class PipeActor extends UntypedActor {
 
   protected void sendToSuccessors(Message message) {
     logger.trace("sending to successor {}", message);
-    RMQ.getInstance().send(Q_READY, message);
+    rmq.send(Q_READY, message);
     metrics.mark(METER_READY);
   }
 
@@ -68,12 +70,12 @@ public abstract class PipeActor extends UntypedActor {
   public final void onReceive(Object message) throws Exception {
     if (message instanceof Message) { // from predecessor pipe actors
       Message msg = (Message) message;
-      RMQ.getInstance().send(Q_INBOX, msg);
+      rmq.send(Q_INBOX, msg);
       getSender().tell(new MessageAck(msg.getId()), getSelf());
 
     } else if (message instanceof MessageAck) { // from successor pipe actors
       MessageAck msg = (MessageAck) message;
-      RMQ.getInstance().delete(Q_SENT, msg.getId());
+      rmq.delete(Q_SENT, msg.getId());
 
     } else if (message instanceof SuccessorActor) { // from windtalker
       SuccessorActor successorActor = (SuccessorActor) message;

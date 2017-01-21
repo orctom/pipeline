@@ -68,7 +68,6 @@ public class Pipeline {
   public Pipeline withApplicationName(String applicationName) {
     validateName(applicationName);
     this.applicationName = applicationName;
-    RMQOptions.getInstance().setId(applicationName);
     return this;
   }
 

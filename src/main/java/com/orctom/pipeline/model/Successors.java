@@ -23,13 +23,15 @@ public class Successors implements RMQConsumer {
 
   private ActorContext context;
   private ActorRef actor;
+  private RMQ rmq;
   private SimpleMetrics metrics;
   private volatile int size;
   private Map<String, GroupSuccessors> groups = new HashMap<>();
 
-  public Successors(ActorContext context, ActorRef actor, SimpleMetrics metrics) {
+  public Successors(ActorContext context, ActorRef actor, RMQ rmq, SimpleMetrics metrics) {
     this.context = context;
     this.actor = actor;
+    this.rmq = rmq;
     this.metrics = metrics;
   }
 
@@ -45,7 +47,7 @@ public class Successors implements RMQConsumer {
     LOGGER.debug("Added successor: {}, {}", role, actorRef);
     if (0 == size++) {
       LOGGER.info("Subscribed to 'ready'.");
-      RMQ.getInstance().subscribe(Q_READY, this);
+      rmq.subscribe(Q_READY, this);
     }
     return addToGroup(role, actorRef);
   }
@@ -61,7 +63,7 @@ public class Successors implements RMQConsumer {
   public synchronized void remove(ActorRef actorRef) {
     LOGGER.debug("Removed successor: {}", actorRef);
     if (0 == --size) {
-      RMQ.getInstance().unsubscribe(Q_READY, this);
+      rmq.unsubscribe(Q_READY, this);
       LOGGER.info("Un-subscribed from 'ready'.");
     }
     for (GroupSuccessors groupSuccessors : groups.values()) {
@@ -89,7 +91,7 @@ public class Successors implements RMQConsumer {
   }
 
   private void moveToSentQueue(Message message) {
-    RMQ.getInstance().send(Q_SENT, message);
+    rmq.send(Q_SENT, message);
   }
 
   public String getRoles() {
