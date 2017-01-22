@@ -41,8 +41,8 @@ public class Pipeline {
 
   private static final Pattern PATTERN_NAME = Pattern.compile("[0-9a-zA-Z-_]+");
 
-  private String cluster;
   private String applicationName;
+  private Config config;
   private Set<String> roles = new HashSet<>();
   private Set<String> interestedRoles = new HashSet<>();
   private String[] basePackages;
@@ -57,12 +57,6 @@ public class Pipeline {
 
   public static Pipeline getInstance() {
     return INSTANCE;
-  }
-
-  public Pipeline withCluster(String cluster) {
-    validateName(cluster);
-    this.cluster = cluster;
-    return this;
   }
 
   public Pipeline withApplicationName(String applicationName) {
@@ -83,9 +77,9 @@ public class Pipeline {
   }
 
   public void run(Class<?> configurationClass) {
-    IdUtils.generate();
-    validate();
     validate(configurationClass);
+    configure();
+    IdUtils.generate();
     createApplicationContextIfNotSet(configurationClass);
     Set<Class<? extends UntypedActor>> untypedActorTypes = collectRolesFromPipeActors();
     createActorSystem();
@@ -93,21 +87,20 @@ public class Pipeline {
     start();
   }
 
-  private void validate() {
-    if (Strings.isNullOrEmpty(cluster)) {
-      throw new IllegalArgException("`cluster` is required.");
-    }
+  private void validate(Class<?> configurationClass) {
     if (Strings.isNullOrEmpty(applicationName)) {
       throw new IllegalArgException("`applicationName` is required.");
     }
-  }
 
-  private void validate(Class<?> configurationClass) {
     if (null == configurationClass) {
       throw new IllegalArgException("Null class to 'run()'!");
     }
     validateIfConfigurationPresent(configurationClass);
     validateAndRetrieveBasePackages(configurationClass);
+  }
+
+  private void configure() {
+    config = Configurator.getInstance(applicationName, Joiner.on(',').join(roles)).getConfig();
   }
 
   private void validateIfConfigurationPresent(Class<?> configurationClass) {
@@ -172,11 +165,19 @@ public class Pipeline {
 
   private void createActorSystem() {
     LOGGER.info("Bootstrapping {} with roles of {}", applicationName, roles);
-    Config config = Configurator.getInstance(applicationName, Joiner.on(',').join(roles)).getConfig();
+    String cluster = getClusterName();
     system = ActorSystem.create(cluster, config);
 
     GenericApplicationContext context = ((GenericApplicationContext) applicationContext);
     context.getBeanFactory().registerSingleton("system", system);
+  }
+
+  private String getClusterName() {
+    String cluster = config.getString("cluster");
+    if (Strings.isNullOrEmpty(cluster)) {
+      throw new IllegalArgException("`cluster` is required.");
+    }
+    return cluster;
   }
 
   private void createActors(Set<Class<? extends UntypedActor>> untypedActorTypes) {
@@ -227,10 +228,6 @@ public class Pipeline {
 
   public ActorSystem getSystem() {
     return system;
-  }
-
-  public String getCluster() {
-    return cluster;
   }
 
   public String getApplicationName() {
