@@ -13,7 +13,6 @@ public class MetricsCollectorApplication {
 
   public static void main(String[] args) {
     Pipeline.getInstance()
-        .withCluster("dummy")
         .withApplicationName("collector")
         .run(MetricsCollectorApplication.class);
   }
