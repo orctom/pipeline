@@ -78,6 +78,8 @@ public class Pipeline {
 
   public void run(Class<?> configurationClass) {
     validate(configurationClass);
+    configure();
+    IdUtils.generate();
     createApplicationContextIfNotSet(configurationClass);
     Set<Class<? extends UntypedActor>> untypedActorTypes = collectRolesFromPipeActors();
     configure();
@@ -97,6 +99,10 @@ public class Pipeline {
     }
     validateIfConfigurationPresent(configurationClass);
     validateAndRetrieveBasePackages(configurationClass);
+  }
+
+  private void configure() {
+    config = Configurator.getInstance(applicationName, Joiner.on(',').join(roles)).getConfig();
   }
 
   private void validateIfConfigurationPresent(Class<?> configurationClass) {
