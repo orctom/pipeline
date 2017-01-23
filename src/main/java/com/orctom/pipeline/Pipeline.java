@@ -17,7 +17,6 @@ import com.orctom.pipeline.precedure.PipeActor;
 import com.orctom.pipeline.util.AnnotationUtils;
 import com.orctom.pipeline.util.IdUtils;
 import com.orctom.pipeline.util.RoleUtils;
-import com.orctom.rmq.RMQOptions;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +28,6 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -79,7 +77,7 @@ public class Pipeline {
   public void run(Class<?> configurationClass) {
     validate(configurationClass);
     createApplicationContextIfNotSet(configurationClass);
-    Set<Class<? extends UntypedActor>> untypedActorTypes = collectRolesFromPipeActors();
+    Set<Class<? extends UntypedActor>> untypedActorTypes = collectRoles();
     configure();
     IdUtils.generate();
     createActorSystem();
@@ -128,15 +126,14 @@ public class Pipeline {
   }
 
   @SuppressWarnings("unchecked")
-  private Set<Class<? extends UntypedActor>> collectRolesFromPipeActors() {
+  private Set<Class<? extends UntypedActor>> collectRoles() {
     Set<Class<? extends UntypedActor>> untypedActorTypes = new HashSet<>();
     for (String basePackage : basePackages) {
       try {
-        List<Class<?>> classes = ClassUtils.getClassesWithAnnotation(basePackage, Actor.class);
-        for (Class<?> clazz : classes) {
+        ClassUtils.getClassesWithAnnotation(basePackage, Actor.class, clazz -> {
           if (!UntypedActor.class.isAssignableFrom(clazz)) {
             LOGGER.error("{} is not an UntypedActor.", clazz);
-            continue;
+            return;
           }
 
           untypedActorTypes.add((Class<? extends UntypedActor>) clazz);
@@ -150,7 +147,7 @@ public class Pipeline {
           if (AbstractMetricsCollector.class.isAssignableFrom(clazz)) {
             roles.add(RoleUtils.getRole(clazz).getRole());
           }
-        }
+        });
       } catch (ClassLoadingException e) {
         LOGGER.error(e.getMessage(), e);
       }
@@ -199,9 +196,7 @@ public class Pipeline {
 
   private void start() {
     new ZookeeperClusterSeed((ExtendedActorSystem) system).join();
-
     Cluster.get(system).registerOnMemberUp(this::onStartup);
-
     registerOnRemoved();
   }
 

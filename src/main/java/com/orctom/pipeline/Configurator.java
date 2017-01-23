@@ -23,7 +23,7 @@ public class Configurator {
       throw new IllegalArgumentException("Node name is empty, call 'withApplicationName(...)' on Pipeline to have it set.");
     }
     if (Strings.isNullOrEmpty(roles)) {
-      throw new IllegalArgumentException("No actors found with annotation 'Actor' and its attribute 'role' is set.");
+      throw new IllegalArgumentException("No actors found with annotation 'Actor' and which attribute 'role' is set.");
     }
 
     return new Configurator(applicationName, roles);
