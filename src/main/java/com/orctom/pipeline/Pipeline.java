@@ -226,7 +226,15 @@ public class Pipeline {
   }
 
   public String getApplicationName() {
-    return applicationName;
+    return applicationName + "@" + getHostname() + ":" + getPort();
+  }
+
+  public String getHostname() {
+    return config.getString("akka.remote.netty.tcp.hostname");
+  }
+
+  public String getPort() {
+    return config.getString("akka.remote.netty.tcp.port");
   }
 
   public Set<String> getRoles() {
