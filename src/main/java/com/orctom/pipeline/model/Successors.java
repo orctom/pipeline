@@ -35,7 +35,7 @@ public class Successors implements RMQConsumer {
     this.metrics = metrics;
   }
 
-  public boolean isEmpty() {
+  private boolean hasNoSuccessors() {
     return 0 == size;
   }
 
@@ -77,14 +77,14 @@ public class Successors implements RMQConsumer {
 
   @Override
   public Ack onMessage(Message message) {
-    if (isEmpty()) {
+    if (hasNoSuccessors()) {
       LOGGER.warn("No successors, halt.");
       return Ack.HALT;
     }
-    metrics.mark(METER_SENT);
     for (GroupSuccessors groupSuccessors : groups.values()) {
       groupSuccessors.sendMessage(message, actor);
     }
+    metrics.mark(METER_SENT);
 
     moveToSentQueue(message);
     return Ack.DONE;

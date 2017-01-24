@@ -9,6 +9,7 @@ import akka.cluster.ClusterEvent.MemberUp;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import com.google.common.base.Joiner;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.orctom.laputa.utils.MutableInt;
 import com.orctom.pipeline.model.*;
 import org.slf4j.Logger;
@@ -37,7 +38,10 @@ class Windtalker extends UntypedActor {
 
   private Set<String> interestedRoles;
 
-  private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+  private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
+      new ThreadFactoryBuilder().setNameFormat("windtalker-resending-%d").build()
+  );
+
   private Map<String, MessageCache<ActorSelection, PipelineMessage>> windtalkerMessages = new ConcurrentHashMap<>();
   private ScheduledFuture<?> scheduled;
 

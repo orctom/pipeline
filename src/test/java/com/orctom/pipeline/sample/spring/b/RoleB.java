@@ -5,20 +5,27 @@ import com.orctom.pipeline.precedure.Pipe;
 import com.orctom.pipeline.sample.spring.service.DummyService;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Actor(role="roleB", interestedRoles = "roleA")
+@Actor(role = "roleB", interestedRoles = "roleA")
 class RoleB extends Pipe {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(RoleB.class);
 
   @Resource
   private DummyService service;
 
+  private AtomicInteger counter = new AtomicInteger(0);
+
   @Override
   protected Ack onMessage(Message message) {
-//    System.out.println(service.foo());
-//    System.out.println(message);
     sendToSuccessors(message);
+    service.count("b1");
+    LOGGER.debug("counter: {}", counter.incrementAndGet());
     return Ack.DONE;
   }
 }

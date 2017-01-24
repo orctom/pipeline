@@ -31,9 +31,9 @@ public abstract class PipeActor extends UntypedActor {
 
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
-  private SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
+  SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
   private SimpleMetricCallback callback;
-  private RMQ rmq = RMQ.getInstance(new RMQOptions(getRole()));
+  RMQ rmq = RMQ.getInstance(new RMQOptions(getRole()));
 
   private Successors successors = new Successors(getContext(), getSelf(), rmq, metrics);
 
