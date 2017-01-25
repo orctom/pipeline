@@ -77,17 +77,22 @@ public class Successors implements RMQConsumer {
 
   @Override
   public Ack onMessage(Message message) {
-    if (hasNoSuccessors()) {
-      LOGGER.warn("No successors, halt.");
-      return Ack.HALT;
-    }
-    for (GroupSuccessors groupSuccessors : groups.values()) {
-      groupSuccessors.sendMessage(message, actor);
-    }
-    metrics.mark(METER_SENT);
+    try {
+      if (hasNoSuccessors()) {
+        LOGGER.warn("No successors, halt.");
+        return Ack.HALT;
+      }
+      for (GroupSuccessors groupSuccessors : groups.values()) {
+        groupSuccessors.sendMessage(message, actor);
+      }
+      metrics.mark(METER_SENT);
 
-    moveToSentQueue(message);
-    return Ack.DONE;
+      moveToSentQueue(message);
+      return Ack.DONE;
+    } catch (Exception e) {
+      LOGGER.error(e.getMessage(), e);
+      return Ack.LATER;
+    }
   }
 
   private void moveToSentQueue(Message message) {
