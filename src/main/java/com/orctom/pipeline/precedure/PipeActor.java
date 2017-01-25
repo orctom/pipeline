@@ -73,7 +73,6 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
 
     } else if (message instanceof MessageAck) { // from successor pipe actors
       MessageAck msg = (MessageAck) message;
-      logger.debug("acked: {}", msg.getId());
       rmq.delete(Q_SENT, msg.getId());
 
     } else if (message instanceof SuccessorActor) { // from windtalker

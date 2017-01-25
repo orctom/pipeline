@@ -41,7 +41,7 @@ public class DummyActor extends UntypedActor {
         new ThreadFactoryBuilder().setNameFormat("test-dummy-%d").build()
     );
     es.submit(() -> {
-      for (int i = 0; i < 100; i++) {
+      for (int i = 0; i < 100_000; i++) {
         Message msg = new Message(
             IdUtils.generate(),
             RandomStringUtils.randomAlphanumeric(400).getBytes()
@@ -55,11 +55,11 @@ public class DummyActor extends UntypedActor {
           service.count("d2");
           LOGGER.debug("counter2: {}", counter2.incrementAndGet());
         }
-        try {
-          TimeUnit.MILLISECONDS.sleep(RandomUtils.nextLong(100, 500));
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+//        try {
+//          TimeUnit.MILLISECONDS.sleep(RandomUtils.nextLong(1, 50));
+//        } catch (InterruptedException e) {
+//          e.printStackTrace();
+//        }
       }
     });
   }
