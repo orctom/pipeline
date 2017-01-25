@@ -22,7 +22,7 @@ class RoleC extends Outlet {
   private AtomicInteger counter = new AtomicInteger(0);
 
   @Override
-  protected Ack onMessage(Message message) {
+  public Ack onMessage(Message message) {
     service.count("c1");
     LOGGER.debug("counter: {}", counter.incrementAndGet());
     return Ack.DONE;

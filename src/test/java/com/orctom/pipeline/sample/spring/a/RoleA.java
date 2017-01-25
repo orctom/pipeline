@@ -22,7 +22,7 @@ public class RoleA extends Pipe {
   private AtomicInteger counter = new AtomicInteger(0);
 
   @Override
-  protected Ack onMessage(Message message) {
+  public Ack onMessage(Message message) {
     sendToSuccessors(message);
     service.count("a1");
     LOGGER.debug("counter: {}", counter.incrementAndGet());
