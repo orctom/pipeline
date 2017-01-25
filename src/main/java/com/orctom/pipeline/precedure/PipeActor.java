@@ -10,10 +10,7 @@ import com.orctom.pipeline.model.SuccessorActor;
 import com.orctom.pipeline.model.Successors;
 import com.orctom.pipeline.util.RoleUtils;
 import com.orctom.pipeline.util.SimpleMetricCallback;
-import com.orctom.rmq.Ack;
-import com.orctom.rmq.Message;
-import com.orctom.rmq.RMQ;
-import com.orctom.rmq.RMQOptions;
+import com.orctom.rmq.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +24,7 @@ import static com.orctom.pipeline.Constants.*;
  * So that current actor can get a list of live predecessors and successors.
  * Created by hao on 7/18/16.
  */
-public abstract class PipeActor extends UntypedActor {
+public abstract class PipeActor extends UntypedActor implements RMQConsumer {
 
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -51,7 +48,7 @@ public abstract class PipeActor extends UntypedActor {
   }
 
   protected void subscribeInbox() {
-    rmq.subscribe(Q_INBOX, new InboxConsumer(this));
+    rmq.subscribe(Q_INBOX, this);
   }
 
   /**
@@ -72,9 +69,11 @@ public abstract class PipeActor extends UntypedActor {
       Message msg = (Message) message;
       rmq.send(Q_INBOX, msg);
       getSender().tell(new MessageAck(msg.getId()), getSelf());
+      metrics.mark(METER_INBOX);
 
     } else if (message instanceof MessageAck) { // from successor pipe actors
       MessageAck msg = (MessageAck) message;
+      logger.debug("acked: {}", msg.getId());
       rmq.delete(Q_SENT, msg.getId());
 
     } else if (message instanceof SuccessorActor) { // from windtalker
@@ -102,12 +101,7 @@ public abstract class PipeActor extends UntypedActor {
     }
   }
 
-  final Ack onMsg(Message message) {
-    metrics.mark(METER_INBOX);
-    return onMessage(message);
-  }
-
-  protected abstract Ack onMessage(Message message);
+  public abstract Ack onMessage(Message message);
 
   private void addSuccessors(String role, List<ActorRef> actorRefs) {
     for (ActorRef actorRef : actorRefs) {

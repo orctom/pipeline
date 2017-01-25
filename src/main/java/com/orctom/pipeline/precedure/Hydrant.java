@@ -28,7 +28,7 @@ public abstract class Hydrant extends PipeActor implements Runnable {
   public abstract void run();
 
   @Override
-  protected final Ack onMessage(Message message) {
+  public final Ack onMessage(Message message) {
     return Ack.DONE;
   }
 }

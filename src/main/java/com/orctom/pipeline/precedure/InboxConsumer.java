@@ -14,7 +14,7 @@ public class InboxConsumer implements RMQConsumer {
 
   @Override
   public Ack onMessage(Message message) {
-    return actor.onMsg(message);
+    return actor.onMessage(message);
   }
 
   @Override
