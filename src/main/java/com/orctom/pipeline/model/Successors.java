@@ -12,8 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.orctom.pipeline.Constants.*;
 
@@ -26,21 +26,13 @@ public class Successors implements RMQConsumer {
   private RMQ rmq;
   private SimpleMetrics metrics;
   private volatile int size;
-  private Map<String, GroupSuccessors> groups = new HashMap<>();
+  private Map<String, GroupSuccessors> groups = new ConcurrentHashMap<>();
 
   public Successors(ActorContext context, ActorRef actor, RMQ rmq, SimpleMetrics metrics) {
     this.context = context;
     this.actor = actor;
     this.rmq = rmq;
     this.metrics = metrics;
-  }
-
-  private boolean hasNoSuccessors() {
-    return 0 == size;
-  }
-
-  public int size() {
-    return size;
   }
 
   public synchronized boolean addSuccessor(String role, ActorRef actorRef) {
@@ -78,10 +70,11 @@ public class Successors implements RMQConsumer {
   @Override
   public Ack onMessage(Message message) {
     try {
-      if (hasNoSuccessors()) {
+      if (groups.isEmpty()) {
         LOGGER.warn("No successors, halt.");
-        return Ack.HALT;
+        return Ack.WAIT;
       }
+
       for (GroupSuccessors groupSuccessors : groups.values()) {
         groupSuccessors.sendMessage(message, actor);
       }

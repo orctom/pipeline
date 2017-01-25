@@ -13,8 +13,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.concurrent.duration.Duration;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,15 +26,15 @@ public class GroupSuccessors {
   private static final int THROTTLE_RATE = 10_000;
 
   private AtomicLong next = new AtomicLong();
-  private List<ActorRef> successors = new ArrayList<>();
+  private List<ActorRef> successors = new CopyOnWriteArrayList<>();
 
   private LoadingCache<ActorRef, ActorRef> throttlers;
 
-  public GroupSuccessors(ActorContext context) {
+  GroupSuccessors(ActorContext context) {
     iniThrottlers(context);
   }
 
-  public boolean addSuccessor(ActorRef actorRef) {
+  boolean addSuccessor(ActorRef actorRef) {
     return !successors.contains(actorRef) && successors.add(actorRef);
   }
 
@@ -42,7 +42,7 @@ public class GroupSuccessors {
     successors.addAll(actorRefs);
   }
 
-  public void remove(ActorRef actorRef) {
+  void remove(ActorRef actorRef) {
     successors.remove(actorRef);
   }
 
@@ -64,7 +64,7 @@ public class GroupSuccessors {
         });
   }
 
-  public void sendMessage(Message message, ActorRef sender) {
+  void sendMessage(Message message, ActorRef sender) {
     if (successors.isEmpty()) {
       return;
     }

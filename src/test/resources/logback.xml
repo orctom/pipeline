@@ -2,7 +2,7 @@
 <configuration>
   <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
-      <pattern>[%d{yyy-MM-dd HH:mm:ss.SSS}] [%thread] %-5level %logger{35} - %m%n</pattern>
+      <pattern>[%d{yyy-MM-dd HH:mm:ss.SSS}] [%thread] %-5level %logger{35} %line - %m%n</pattern>
     </encoder>
   </appender>
 
@@ -14,7 +14,7 @@
     <appender-ref ref="stdout"/>
   </logger>
 
-  <logger name="com.orctom.rmq" level="trace" additivity="false">
+  <logger name="com.orctom.rmq" level="info" additivity="false">
     <appender-ref ref="stdout"/>
   </logger>
 
