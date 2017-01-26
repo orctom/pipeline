@@ -75,12 +75,15 @@ public class Successors implements RMQConsumer {
         return Ack.WAIT;
       }
 
-      for (GroupSuccessors groupSuccessors : groups.values()) {
+      for (Map.Entry<String, GroupSuccessors> entry : groups.entrySet()) {
+        String role = entry.getKey();
+        GroupSuccessors groupSuccessors = entry.getValue();
         groupSuccessors.sendMessage(message, actor);
+        markSentMessage(role, message);
       }
+
       metrics.mark(METER_SENT);
 
-      moveToSentQueue(message);
       return Ack.DONE;
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
@@ -88,8 +91,8 @@ public class Successors implements RMQConsumer {
     }
   }
 
-  private void moveToSentQueue(Message message) {
-    rmq.send(Q_SENT, message);
+  private void markSentMessage(String role, Message message) {
+      rmq.send(Q_SENT, new SentMessage(role, message));
   }
 
   public String getRoles() {

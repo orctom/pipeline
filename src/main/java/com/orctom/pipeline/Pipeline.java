@@ -31,13 +31,14 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static com.orctom.pipeline.Constants.MAX_LEN_NAMES;
+import static com.orctom.pipeline.Constants.PATTERN_NAME;
+
 public class Pipeline {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Pipeline.class);
 
   private static final Pipeline INSTANCE = new Pipeline();
-
-  private static final Pattern PATTERN_NAME = Pattern.compile("[0-9a-zA-Z-_]+");
 
   private String applicationName;
   private Config config;
@@ -64,6 +65,9 @@ public class Pipeline {
   }
 
   private void validateName(String name) {
+    if (name.length() > MAX_LEN_NAMES) {
+      throw new IllegalArgException("Application name should not be longer than 20, applicationName: " + name);
+    }
     if (!PATTERN_NAME.matcher(name).matches()) {
       throw new IllegalArgException("Illegal name: " + name + ", only allows '0-9', 'a-z', 'A-Z', '-' and '_'");
     }

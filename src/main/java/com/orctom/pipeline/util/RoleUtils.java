@@ -2,12 +2,16 @@ package com.orctom.pipeline.util;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
+import com.orctom.laputa.exception.IllegalArgException;
 import com.orctom.laputa.exception.IllegalConfigException;
 import com.orctom.pipeline.annotation.Actor;
 import com.orctom.pipeline.model.Role;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static com.orctom.pipeline.Constants.MAX_LEN_NAMES;
+import static com.orctom.pipeline.Constants.PATTERN_NAME;
 
 public abstract class RoleUtils {
 
@@ -28,6 +32,12 @@ public abstract class RoleUtils {
       role = actor.value();
       if (Strings.isNullOrEmpty(role)) {
         throw new IllegalConfigException("'value' in 'Actor' expected but not set. on class: " + clazz);
+      }
+      if (role.length() > MAX_LEN_NAMES) {
+        throw new IllegalConfigException("'value' in 'Actor' should not be longer than 20,  value: " + role);
+      }
+      if (!PATTERN_NAME.matcher(role).matches()) {
+        throw new IllegalArgException("Illegal role: " + role + ", only allows '0-9', 'a-z', 'A-Z', '-' and '_'");
       }
     }
 
