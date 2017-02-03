@@ -7,9 +7,13 @@ public class Constants {
   public static final Pattern PATTERN_NAME = Pattern.compile("[0-9a-zA-Z-_]+");
   public static final int MAX_LEN_NAMES = 20;
 
+  public static final String AT_SIGN = "@";
+  public static final String EMPTY_STRING = "";
+
   public static final String Q_INBOX = "inbox";
-  public static final String Q_READY = "ready";
+  public static final String Q_PROCESSED = "processed";
   public static final String Q_SENT = "sent";
+  public static final String Q_SENT_RECORDS = "sent_records";
 
   public static final String METER_INBOX = "inbox";
   public static final String METER_READY = "ready";

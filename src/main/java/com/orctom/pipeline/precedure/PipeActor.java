@@ -8,9 +8,13 @@ import com.orctom.pipeline.model.MessageAck;
 import com.orctom.pipeline.model.RemoteMetricsCollectorActors;
 import com.orctom.pipeline.model.SuccessorActor;
 import com.orctom.pipeline.model.Successors;
+import com.orctom.pipeline.persist.MessageQueue;
 import com.orctom.pipeline.util.RoleUtils;
 import com.orctom.pipeline.util.SimpleMetricCallback;
-import com.orctom.rmq.*;
+import com.orctom.rmq.Ack;
+import com.orctom.rmq.Message;
+import com.orctom.rmq.RMQConsumer;
+import com.orctom.rmq.RMQOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,9 +34,9 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
 
   SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
   private SimpleMetricCallback callback;
-  RMQ rmq = RMQ.getInstance(new RMQOptions(getRole()));
+  MessageQueue messageQueue = MessageQueue.getInstance(new RMQOptions(getRole()));
 
-  private Successors successors = new Successors(getContext(), getSelf(), rmq, metrics);
+  private Successors successors = new Successors(getContext(), getSelf(), messageQueue, metrics);
 
   @Override
   public final void preStart() throws Exception {
@@ -48,7 +52,7 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
   }
 
   protected void subscribeInbox() {
-    rmq.subscribe(Q_INBOX, this);
+    messageQueue.subscribe(Q_INBOX, this);
   }
 
   /**
@@ -59,7 +63,7 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
 
   protected void sendToSuccessors(Message message) {
     logger.trace("sending to successor {}", message);
-    rmq.send(Q_READY, message);
+    messageQueue.push(Q_PROCESSED, message);
     metrics.mark(METER_READY);
   }
 
@@ -67,13 +71,13 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
   public final void onReceive(Object message) throws Exception {
     if (message instanceof Message) { // from predecessor pipe actors
       Message msg = (Message) message;
-      rmq.send(Q_INBOX, msg);
+      messageQueue.push(Q_INBOX, msg);
       getSender().tell(new MessageAck(msg.getId()), getSelf());
       metrics.mark(METER_INBOX);
 
     } else if (message instanceof MessageAck) { // from successor pipe actors
       MessageAck msg = (MessageAck) message;
-      rmq.delete(Q_SENT, msg.getId());
+      messageQueue.delete(Q_SENT_RECORDS, msg.getId());
 
     } else if (message instanceof SuccessorActor) { // from windtalker
       SuccessorActor successorActor = (SuccessorActor) message;

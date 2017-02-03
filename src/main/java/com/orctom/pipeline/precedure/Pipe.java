@@ -15,9 +15,9 @@ public abstract class Pipe extends PipeActor {
   protected void started() {
     super.started();
 
-    metrics.gauge(Q_INBOX + "-size", () -> "size: " + rmq.getSize(Q_INBOX));
-    metrics.gauge(Q_READY + "-size", () -> "size: " + rmq.getSize(Q_READY));
-    metrics.gauge(Q_SENT + "-size", () -> "size: " + rmq.getSize(Q_SENT));
+    metrics.gauge(Q_INBOX + "-size", () -> "size: " + messageQueue.getSize(Q_INBOX));
+    metrics.gauge(Q_PROCESSED + "-size", () -> "size: " + messageQueue.getSize(Q_PROCESSED));
+    metrics.gauge(Q_SENT + "-size", () -> "size: " + messageQueue.getSize(Q_SENT));
   }
 
   protected final void sendToSuccessors(Message message) {

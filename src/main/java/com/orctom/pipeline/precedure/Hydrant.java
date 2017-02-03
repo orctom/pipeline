@@ -3,7 +3,7 @@ package com.orctom.pipeline.precedure;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 
-import static com.orctom.pipeline.Constants.Q_READY;
+import static com.orctom.pipeline.Constants.Q_PROCESSED;
 import static com.orctom.pipeline.Constants.Q_SENT;
 
 /**
@@ -14,8 +14,8 @@ public abstract class Hydrant extends PipeActor implements Runnable {
 
   @Override
   protected final void started() {
-    metrics.gauge(Q_READY + "-size", () -> "size: " + rmq.getSize(Q_READY));
-    metrics.gauge(Q_SENT + "-size", () -> "size: " + rmq.getSize(Q_SENT));
+    metrics.gauge(Q_PROCESSED + "-size", () -> "size: " + messageQueue.getSize(Q_PROCESSED));
+    metrics.gauge(Q_SENT + "-size", () -> "size: " + messageQueue.getSize(Q_SENT));
     new Thread(this).start();
   }
 

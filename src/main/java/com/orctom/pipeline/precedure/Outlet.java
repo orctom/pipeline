@@ -13,7 +13,7 @@ public abstract class Outlet extends PipeActor {
   @Override
   protected void started() {
     super.started();
-    metrics.gauge(Q_INBOX + "-size", () -> "size: " + rmq.getSize(Q_INBOX));
+    metrics.gauge(Q_INBOX + "-size", () -> "size: " + messageQueue.getSize(Q_INBOX));
   }
 
   @Override

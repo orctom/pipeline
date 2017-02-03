@@ -49,7 +49,7 @@ public class GroupSuccessors {
   private void iniThrottlers(final ActorContext context) {
     throttlers = CacheBuilder
         .newBuilder()
-        .softValues()
+        .weakValues()
         .build(new CacheLoader<ActorRef, ActorRef>() {
           @Override
           public ActorRef load(ActorRef successor) throws Exception {
