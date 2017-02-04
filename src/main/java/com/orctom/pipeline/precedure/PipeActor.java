@@ -71,8 +71,9 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
   public final void onReceive(Object message) throws Exception {
     if (message instanceof Message) { // from predecessor pipe actors
       Message msg = (Message) message;
-      messageQueue.push(Q_INBOX, msg);
-      getSender().tell(new MessageAck(msg.getId()), getSelf());
+      MessageAck ack = new MessageAck(msg.getId());
+      messageQueue.push(Q_INBOX, withRoleRemovedFromId(msg));
+      getSender().tell(ack, getSelf());
       metrics.mark(METER_INBOX);
 
     } else if (message instanceof MessageAck) { // from successor pipe actors
@@ -102,6 +103,19 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
       unhandled(message);
       logger.warn("Unhandled message: {}.", message);
     }
+  }
+
+  /**
+   * resent messages contains role name in id, as <code>14545666@roleB</code>
+   */
+  private Message withRoleRemovedFromId(Message msg) {
+    String id = msg.getId();
+    int atSignIndex = id.indexOf(AT_SIGN);
+    if (atSignIndex < 0) {
+      return msg;
+    }
+
+    return new Message(id.substring(0, atSignIndex), msg.getData());
   }
 
   public abstract Ack onMessage(Message message);
