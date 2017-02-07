@@ -7,7 +7,6 @@ import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.model.MessageAck;
 import com.orctom.pipeline.model.RemoteMetricsCollectorActors;
 import com.orctom.pipeline.model.SuccessorActor;
-import com.orctom.pipeline.model.Successors;
 import com.orctom.pipeline.persist.MessageQueue;
 import com.orctom.pipeline.util.RoleUtils;
 import com.orctom.pipeline.util.SimpleMetricCallback;

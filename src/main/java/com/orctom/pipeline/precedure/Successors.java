@@ -1,4 +1,4 @@
-package com.orctom.pipeline.model;
+package com.orctom.pipeline.precedure;
 
 import akka.actor.ActorContext;
 import akka.actor.ActorRef;
@@ -18,13 +18,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import static com.orctom.pipeline.Constants.*;
 
 public class Successors implements RMQConsumer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Successors.class);
+  private final Logger logger = LoggerFactory.getLogger(Successors.class);
 
   private ActorContext context;
   private ActorRef actor;
@@ -47,9 +46,9 @@ public class Successors implements RMQConsumer {
   }
 
   public synchronized boolean addSuccessor(String role, ActorRef actorRef) {
-    LOGGER.debug("Added successor: {}, {}", role, actorRef);
+    logger.debug("Added successor: {}, {}", role, actorRef);
     if (0 == size++) {
-      LOGGER.info("Subscribed to 'ready'.");
+      logger.info("Subscribed to 'ready'.");
       messageQueue.subscribe(Q_PROCESSED, this);
     }
     return addToGroup(role, actorRef);
@@ -64,10 +63,10 @@ public class Successors implements RMQConsumer {
   }
 
   public synchronized void remove(ActorRef actorRef) {
-    LOGGER.debug("Removed successor: {}", actorRef);
+    logger.debug("Removed successor: {}", actorRef);
     if (0 == --size) {
       messageQueue.unsubscribe(Q_PROCESSED, this);
-      LOGGER.info("Un-subscribed from 'ready'.");
+      logger.info("Un-subscribed from 'ready'.");
     }
     for (GroupSuccessors groupSuccessors : groups.values()) {
       groupSuccessors.remove(actorRef);
@@ -82,7 +81,7 @@ public class Successors implements RMQConsumer {
   public Ack onMessage(Message message) {
     try {
       if (groups.isEmpty()) {
-        LOGGER.warn("No successors, halt.");
+        logger.warn("No successors, halt.");
         return Ack.WAIT;
       }
 
@@ -102,7 +101,7 @@ public class Successors implements RMQConsumer {
 
       return Ack.DONE;
     } catch (Exception e) {
-      LOGGER.error(e.getMessage(), e);
+      logger.error(e.getMessage(), e);
       return Ack.LATER;
     }
   }

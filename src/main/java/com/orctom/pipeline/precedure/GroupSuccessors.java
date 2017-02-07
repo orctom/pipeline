@@ -1,4 +1,4 @@
-package com.orctom.pipeline.model;
+package com.orctom.pipeline.precedure;
 
 import akka.actor.ActorContext;
 import akka.actor.ActorRef;
@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class GroupSuccessors {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(GroupSuccessors.class);
+  private final Logger logger = LoggerFactory.getLogger(GroupSuccessors.class);
 
   private static final int THROTTLE_RATE = 10_000;
 
@@ -74,7 +74,7 @@ public class GroupSuccessors {
     try {
       throttlers.get(successor).tell(message, sender);
     } catch (ExecutionException e) {
-      LOGGER.error(e.getMessage(), e);
+      logger.error(e.getMessage(), e);
     }
   }
 
