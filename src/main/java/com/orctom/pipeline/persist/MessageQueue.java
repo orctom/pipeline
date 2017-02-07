@@ -60,6 +60,7 @@ public class MessageQueue extends RMQ {
         if (originalId == recordId) {
           sentMessage.setData(message.getData());
           consumer.accept(sentMessage);
+          super.decreaseSize(Q_SENT);
           hasNotFoundMatches = false;
           LOGGER.trace("Resent: {}", recordId);
           message = getNextMessage(messageIterator);
