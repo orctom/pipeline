@@ -16,7 +16,7 @@ public class Constants {
   public static final String Q_SENT_RECORDS = "sent_records";
 
   public static final String METER_INBOX = "inbox";
-  public static final String METER_READY = "ready";
+  public static final String METER_PROCESSED = "processed";
   public static final String METER_SENT = "sent";
 
   public static final String MEMBER_EVENT_UP = "up";

@@ -48,7 +48,7 @@ public class Successors implements RMQConsumer {
   public synchronized boolean addSuccessor(String role, ActorRef actorRef) {
     logger.debug("Added successor: {}, {}", role, actorRef);
     if (0 == size++) {
-      logger.info("Subscribed to 'ready'.");
+      logger.info("Subscribed to '{}'.", Q_PROCESSED);
       messageQueue.subscribe(Q_PROCESSED, this);
     }
     return addToGroup(role, actorRef);
@@ -66,7 +66,7 @@ public class Successors implements RMQConsumer {
     logger.debug("Removed successor: {}", actorRef);
     if (0 == --size) {
       messageQueue.unsubscribe(Q_PROCESSED, this);
-      logger.info("Un-subscribed from 'ready'.");
+      logger.info("Un-subscribed from '{}'.", Q_PROCESSED);
     }
     for (GroupSuccessors groupSuccessors : groups.values()) {
       groupSuccessors.remove(actorRef);

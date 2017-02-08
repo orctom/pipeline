@@ -63,7 +63,7 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
   protected void sendToSuccessors(Message message) {
     logger.trace("sending to successor {}", message);
     messageQueue.push(Q_PROCESSED, message);
-    metrics.mark(METER_READY);
+    metrics.mark(METER_PROCESSED);
   }
 
   @Override

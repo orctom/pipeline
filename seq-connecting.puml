@@ -25,7 +25,7 @@ group processed
   Windtalker -> "Pipe Actor": <RemoteActors>
   "Pipe Actor" -> Successors: <<addSuccessors>>
   activate Successors
-  Successors -> rmq: <<subscribe>> self to 'ready'
+  Successors -> rmq: <<subscribe>> self to 'processed'
   deactivate Successors
   activate rmq
   deactivate rmq
