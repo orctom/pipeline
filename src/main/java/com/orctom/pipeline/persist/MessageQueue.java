@@ -1,6 +1,7 @@
 package com.orctom.pipeline.persist;
 
 import com.orctom.pipeline.model.SentMessage;
+import com.orctom.pipeline.util.IdUtils;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQ;
 import com.orctom.rmq.RMQOptions;
@@ -15,6 +16,7 @@ import static com.orctom.pipeline.Constants.*;
 public class MessageQueue extends RMQ {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageQueue.class);
+  private static final int SAFE_TIME_SPAN = 262_275_072;// about 2 seconds
 
   private MessageQueue(RMQOptions options) {
     super(options);
@@ -26,59 +28,60 @@ public class MessageQueue extends RMQ {
 
   public void iterateSentMessages(Consumer<SentMessage> consumer) {
     try {
+      long timestamp = IdUtils.generateLong();
       LOGGER.trace("Start resending un-acked messages...");
       RocksIterator messageIterator = super.iter(Q_SENT);
       if (null == messageIterator) {
         return;
       }
-      messageIterator.seekToFirst();
       Message message = getNextMessage(messageIterator);
       if (null == message) {
         LOGGER.trace("Done, no sent messages.");
         return;
       }
 
-      RocksIterator sentMessagesIterator = super.iter(Q_SENT_RECORDS);
-      if (null == sentMessagesIterator) {
+      RocksIterator sentRecordsIterator = super.iter(Q_SENT_RECORDS);
+      if (null == sentRecordsIterator) {
         clearSentQueue();
-        LOGGER.trace("Done, no sent records, sent messages got cleared.");
+        LOGGER.debug("Done, no sent records, sent messages got cleared.");
         return;
       }
-      sentMessagesIterator.seekToFirst();
-      SentMessage sentMessage = getNextSentMessage(sentMessagesIterator);
-      if (null == sentMessage) {
+      SentMessage sentRecord = getNextSentRecord(sentRecordsIterator);
+      if (null == sentRecord) {
         clearSentQueue();
-        LOGGER.trace("Done, no sent records, sent messages got cleared.");
+        LOGGER.debug("Done, empty sent records, sent messages got cleared.");
         return;
       }
 
-      boolean hasNotFoundMatches = true;
-      while (null != message && null != sentMessage) {
-        long originalId = Long.valueOf(message.getId());
-        long recordId = sentMessage.getOriginalId();
-        LOGGER.trace("originalId: {}, recordId {}", originalId, sentMessage.getId());
-        if (originalId == recordId) {
-          sentMessage.setData(message.getData());
-          consumer.accept(sentMessage);
-          super.decreaseSize(Q_SENT);
-          hasNotFoundMatches = false;
-          LOGGER.trace("Resent: {}", recordId);
-          message = getNextMessage(messageIterator);
-          sentMessage = getNextSentMessage(sentMessagesIterator);
-
-        } else {
-          if (hasNotFoundMatches) {
-            delete(Q_SENT, message.getId());
-            LOGGER.trace("Deleted from [sent]: {}", originalId);
+      while (null != message && null != sentRecord) {
+        try {
+          long originalId = Long.valueOf(message.getId());
+          if (timestamp - originalId < SAFE_TIME_SPAN) {
+            return;
           }
 
-          if (originalId < recordId) {
-            LOGGER.trace("sent: {}, record {}, 'sent' move next.", originalId, recordId);
-            message = getNextMessage(messageIterator);
+          long recordId = sentRecord.getOriginalId();
+          LOGGER.trace("originalId: {}, recordId {}", originalId, sentRecord.getId());
+          if (originalId == recordId) {
+            sentRecord.setData(message.getData());
+            consumer.accept(sentRecord);
+            LOGGER.trace("Resent: {}", recordId);
+            sentRecord = getNextSentRecord(sentRecordsIterator);
+
           } else {
-            LOGGER.trace("sent: {}, record {}, 'record' move next.", originalId, recordId);
-            sentMessage = getNextSentMessage(sentMessagesIterator);
+            if (originalId < recordId) {
+              LOGGER.trace("sent: {}, record {}, 'sent' move next.", originalId, recordId);
+              super.delete(Q_SENT, message.getId());
+              message = getNextMessage(messageIterator);
+
+            } else {
+              LOGGER.trace("sent: {}, record {}, 'record' move next.", originalId, recordId);
+              super.delete(Q_SENT_RECORDS, sentRecord.getId());
+              sentRecord = getNextSentRecord(sentRecordsIterator);
+            }
           }
+        } catch (Exception e) {
+          LOGGER.error(e.getMessage(), e);
         }
       }
     } catch (Exception e) {
@@ -97,7 +100,7 @@ public class MessageQueue extends RMQ {
     return new Message(id, data);
   }
 
-  private SentMessage getNextSentMessage(RocksIterator sentMessagesIterator) {
+  private SentMessage getNextSentRecord(RocksIterator sentMessagesIterator) {
     sentMessagesIterator.next();
     if (!sentMessagesIterator.isValid()) {
       return null;
@@ -107,7 +110,7 @@ public class MessageQueue extends RMQ {
     String[] items = sentId.split(AT_SIGN);
     if (2 != items.length) {
       LOGGER.error("Wrong id, expected {}, id: {}", AT_SIGN, sentId);
-      return getNextSentMessage(sentMessagesIterator);
+      return getNextSentRecord(sentMessagesIterator);
     }
     long originalId = Long.valueOf(items[0]);
     String role = items[1];
@@ -115,6 +118,6 @@ public class MessageQueue extends RMQ {
   }
 
   private void clearSentQueue() {
-    flush(Q_SENT);
+    super.flush(Q_SENT, IdUtils.generate());
   }
 }
