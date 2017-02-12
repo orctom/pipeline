@@ -32,20 +32,22 @@ public class Successors implements RMQConsumer {
   private volatile int size;
   private Map<String, GroupSuccessors> groups = new ConcurrentHashMap<>();
 
-  private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
-      new ThreadFactoryBuilder().setNameFormat("pipeline-sent@" + hashCode()).build()
-  );
+  private final ScheduledExecutorService scheduler;
 
-  public Successors(ActorContext context, ActorRef actor, MessageQueue messageQueue, SimpleMetrics metrics) {
+  public Successors(ActorContext context, ActorRef actor, MessageQueue messageQueue, SimpleMetrics metrics, String role) {
     this.context = context;
     this.actor = actor;
     this.messageQueue = messageQueue;
     this.metrics = metrics;
 
+    scheduler = Executors.newSingleThreadScheduledExecutor(
+        new ThreadFactoryBuilder().setNameFormat("pipeline-" + role + "-sent-%d").build()
+    );
+
     scheduleResendUnAckedMessages();
   }
 
-  public synchronized boolean addSuccessor(String role, ActorRef actorRef) {
+  synchronized boolean addSuccessor(String role, ActorRef actorRef) {
     logger.debug("Added successor: {}, {}", role, actorRef);
     if (0 == size++) {
       logger.info("Subscribed to '{}'.", Q_PROCESSED);
@@ -62,7 +64,7 @@ public class Successors implements RMQConsumer {
     return groups.computeIfAbsent(role, k -> new GroupSuccessors(context));
   }
 
-  public synchronized void remove(ActorRef actorRef) {
+   synchronized void remove(ActorRef actorRef) {
     logger.debug("Removed successor: {}", actorRef);
     if (0 == --size) {
       messageQueue.unsubscribe(Q_PROCESSED, this);
@@ -121,7 +123,7 @@ public class Successors implements RMQConsumer {
     }), 0, 30, TimeUnit.SECONDS);
   }
 
-  public String getRoles() {
+  String getRoles() {
     return Arrays.toString(groups.keySet().toArray());
   }
 

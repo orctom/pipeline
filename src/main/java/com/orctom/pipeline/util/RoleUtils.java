@@ -35,7 +35,7 @@ public abstract class RoleUtils {
     }
 
     String[] interestedRoles = actor.interestedRoles();
-    validateInterestedRoles(clazz, interestedRoles);
+//    validateInterestedRoles(clazz, interestedRoles);
     return new Role(role, Sets.newHashSet(interestedRoles));
   }
 
