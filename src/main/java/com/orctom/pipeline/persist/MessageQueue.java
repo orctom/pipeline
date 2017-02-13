@@ -16,7 +16,7 @@ import static com.orctom.pipeline.Constants.*;
 public class MessageQueue extends RMQ {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageQueue.class);
-  private static final int SAFE_TIME_SPAN = 262_275_072;// about 2 seconds
+  private static final long SAFE_TIME_SPAN = 1_310_720_000;// about 10  seconds
 
   private MessageQueue(RMQOptions options) {
     super(options);
