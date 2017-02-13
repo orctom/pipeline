@@ -221,6 +221,10 @@ public class Pipeline {
     LOGGER.debug("{} get removed", getClass());
   }
 
+  public Config getConfig() {
+    return config;
+  }
+
   public ApplicationContext getApplicationContext() {
     return applicationContext;
   }
