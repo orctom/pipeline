@@ -1,5 +1,6 @@
 package com.orctom.pipeline.persist;
 
+import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.model.SentMessage;
 import com.orctom.pipeline.util.IdUtils;
 import com.orctom.rmq.Message;
@@ -18,12 +19,15 @@ public class MessageQueue extends RMQ {
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageQueue.class);
   private static final long SAFE_TIME_SPAN = 1_310_720_000;// about 10  seconds
 
-  private MessageQueue(RMQOptions options) {
+  private SimpleMetrics metrics;
+
+  private MessageQueue(RMQOptions options, SimpleMetrics metrics) {
     super(options);
+    this.metrics = metrics;
   }
 
-  public static MessageQueue getInstance(RMQOptions options) {
-    return (MessageQueue) RMQ.getInstance(options, new MessageQueue(options));
+  public static MessageQueue getInstance(RMQOptions options, SimpleMetrics metrics) {
+    return (MessageQueue) RMQ.getInstance(options, new MessageQueue(options, metrics));
   }
 
   public void iterateSentMessages(Consumer<SentMessage> consumer) {
@@ -66,6 +70,7 @@ public class MessageQueue extends RMQ {
           if (originalId == recordId) {
             sentRecord.setData(message.getData());
             consumer.accept(sentRecord);
+            metrics.mark(METER_SENT);
             LOGGER.trace("Resent: {}", recordId);
             sentRecord = getNextSentRecord(sentRecordsIterator);
             isIdle = false;

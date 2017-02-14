@@ -32,7 +32,7 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
   SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
-  MessageQueue messageQueue = MessageQueue.getInstance(new RMQOptions(getRole()));
+  MessageQueue messageQueue = MessageQueue.getInstance(new RMQOptions(getRole()), metrics);
 
   private SimpleMetricCallback callback;
 
