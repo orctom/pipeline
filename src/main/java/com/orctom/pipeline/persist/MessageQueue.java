@@ -53,6 +53,7 @@ public class MessageQueue extends RMQ {
         return;
       }
 
+      boolean isIdle = true;
       while (null != message && null != sentRecord) {
         try {
           long originalId = Long.valueOf(message.getId());
@@ -67,16 +68,21 @@ public class MessageQueue extends RMQ {
             consumer.accept(sentRecord);
             LOGGER.trace("Resent: {}", recordId);
             sentRecord = getNextSentRecord(sentRecordsIterator);
+            isIdle = false;
 
           } else {
             if (originalId < recordId) {
               LOGGER.trace("sent: {}, record {}, 'sent' move next.", originalId, recordId);
-              super.delete(Q_SENT, message.getId());
+              if (isIdle) {
+                super.delete(Q_SENT, message.getId());
+              }
               message = getNextMessage(messageIterator);
 
             } else {
               LOGGER.trace("sent: {}, record {}, 'record' move next.", originalId, recordId);
-              super.delete(Q_SENT_RECORDS, sentRecord.getId());
+              if (isIdle) {
+                super.delete(Q_SENT_RECORDS, sentRecord.getId());
+              }
               sentRecord = getNextSentRecord(sentRecordsIterator);
             }
           }

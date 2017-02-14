@@ -120,7 +120,7 @@ public class Successors implements RMQConsumer {
         return;
       }
       successors.sendMessage(message, actor);
-    }), 0, 30, TimeUnit.SECONDS);
+    }), 2, 5, TimeUnit.SECONDS);
   }
 
   String getRoles() {
