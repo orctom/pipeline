@@ -1,21 +1,50 @@
 package com.orctom.pipeline;
 
 import com.google.common.base.Strings;
+import com.orctom.laputa.exception.IllegalConfigException;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.orctom.pipeline.Constants.*;
 
 public class Configurator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(Configurator.class);
 
   private Config config;
 
   private Configurator(String applicationName, String roles) {
     final Config node = ConfigFactory.load(applicationName);
-    final Config ref = ConfigFactory.load("reference.conf");
-    final Config app = ConfigFactory.load();
-    config = ConfigFactory.parseString(String.format("akka.cluster.roles = [%s]", roles))
-        .withFallback(node)
-        .withFallback(ref)
-        .withFallback(app);
+    Map<String, Object> pipeline = new HashMap<>();
+    config(node, PIPELINE_NAME, pipeline, CFG_NAME);
+    config(node, PIPELINE_HOST, pipeline, CFG_HOST);
+    config(node, PIPELINE_PORT, pipeline, CFG_PORT);
+    config(node, PIPELINE_ZK_ADDRESSES, pipeline, CFG_ZK_ADDRESSES);
+    pipeline.put(CFG_ROLES, "[" + roles + "]");
+
+    config = node
+        .withFallback(ConfigFactory.parseMap(pipeline))
+        .withFallback(ConfigFactory.load());
+    System.out.println(config.getString(CFG_NAME));
+    System.out.println(config.getString(CFG_HOST));
+    System.out.println(config.getString(CFG_PORT));
+    System.out.println(config.getString(CFG_ZK_ADDRESSES));
+    System.out.println(config.getString(CFG_ROLES));
+  }
+
+  private void config(Config node, String property, Map<String, Object> pipeline, String key) {
+    String value = System.getProperty(property, node.getString(property));
+    if (Strings.isNullOrEmpty(value)) {
+      throw new IllegalConfigException(property + " expected, but is null or empty");
+    }
+
+    LOGGER.info("{}: {}", key, value);
+    pipeline.put(key, value);
   }
 
   public static Configurator getInstance(String applicationName, String roles) {

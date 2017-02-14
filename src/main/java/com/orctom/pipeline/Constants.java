@@ -4,6 +4,17 @@ import java.util.regex.Pattern;
 
 public class Constants {
 
+  static final String PIPELINE_NAME = "pipeline.name";
+  static final String PIPELINE_HOST = "pipeline.host";
+  static final String PIPELINE_PORT = "pipeline.port";
+  static final String PIPELINE_ZK_ADDRESSES = "pipeline.zk.addresses";
+
+  static final String CFG_NAME = PIPELINE_NAME;
+  static final String CFG_HOST = "akka.remote.netty.tcp.hostname";
+  static final String CFG_PORT = "akka.remote.netty.tcp.port";
+  static final String CFG_ZK_ADDRESSES = "akka.cluster.seed.zookeeper.url";
+  static final String CFG_ROLES = "akka.cluster.roles";
+
   public static final Pattern PATTERN_NAME = Pattern.compile("[0-9a-zA-Z-_]+");
   public static final int MAX_LEN_NAMES = 20;
 

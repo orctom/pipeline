@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 
 import static com.orctom.pipeline.Constants.MAX_LEN_NAMES;
 import static com.orctom.pipeline.Constants.PATTERN_NAME;
+import static com.orctom.pipeline.Constants.PIPELINE_NAME;
 
 public class Pipeline {
 
@@ -174,7 +175,7 @@ public class Pipeline {
   }
 
   private String getClusterName() {
-    String cluster = config.getString("cluster");
+    String cluster = config.getString(PIPELINE_NAME);
     if (Strings.isNullOrEmpty(cluster)) {
       throw new IllegalArgException("`cluster` is required.");
     }
