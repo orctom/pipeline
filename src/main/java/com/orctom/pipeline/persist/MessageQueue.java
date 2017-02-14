@@ -70,7 +70,7 @@ public class MessageQueue extends RMQ {
           if (originalId == recordId) {
             sentRecord.setData(message.getData());
             consumer.accept(sentRecord);
-            metrics.mark(METER_SENT);
+            metrics.mark(METER_RESENT);
             LOGGER.trace("Resent: {}", recordId);
             sentRecord = getNextSentRecord(sentRecordsIterator);
             isIdle = false;
