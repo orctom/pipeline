@@ -4,6 +4,7 @@ import akka.actor.ActorRef;
 import akka.actor.UntypedActor;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.orctom.pipeline.ActorFactory;
+import com.orctom.pipeline.Pipeline;
 import com.orctom.pipeline.annotation.Actor;
 import com.orctom.pipeline.sample.spring.service.DummyService;
 import com.orctom.pipeline.util.IdUtils;
@@ -40,8 +41,9 @@ public class DummyActor extends UntypedActor {
     ExecutorService es = Executors.newSingleThreadExecutor(
         new ThreadFactoryBuilder().setNameFormat("test-dummy-%d").build()
     );
+    long size = Pipeline.getInstance().getConfig().getLong("hydrant.size");
     es.submit(() -> {
-      for (int i = 0; i < 1_000; i++) {
+      for (int i = 0; i < size; i++) {
         Message msg = new Message(
             IdUtils.generate(),
             RandomStringUtils.randomAlphanumeric(400).getBytes()
