@@ -1,6 +1,5 @@
 package com.orctom.pipeline;
 
-import akka.stream.impl.fusing.Split;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.orctom.laputa.exception.IllegalConfigException;
@@ -26,7 +25,7 @@ public class Configurator {
     config(node, PIPELINE_NAME, pipeline, CFG_NAME);
     config(node, PIPELINE_HOST, pipeline, CFG_HOST);
     config(node, PIPELINE_PORT, pipeline, CFG_PORT);
-    config(node, PIPELINE_ZK_ADDRESSES, pipeline, CFG_ZK_ADDRESSES);
+    config(node, PIPELINE_ZK_URL, pipeline, CFG_ZK_URL);
     pipeline.put(CFG_ROLES, Splitter.on(",").omitEmptyStrings().trimResults().splitToList(roles));
 
     config = ConfigFactory.parseMap(pipeline)
