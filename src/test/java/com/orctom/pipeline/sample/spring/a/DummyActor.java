@@ -10,14 +10,12 @@ import com.orctom.pipeline.sample.spring.service.DummyService;
 import com.orctom.pipeline.util.IdUtils;
 import com.orctom.rmq.Message;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Actor("dummy")

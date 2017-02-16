@@ -18,10 +18,12 @@ public abstract class ActorFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(ActorFactory.class);
 
   private static ApplicationContext applicationContext;
+  private static ActorSystem actorSystem;
   private static Map<String, ActorRef> cache = new HashMap<>();
 
   static void setApplicationContext(ApplicationContext applicationContext) {
     ActorFactory.applicationContext = applicationContext;
+    ActorFactory.actorSystem = applicationContext.getBean(ActorSystem.class);
   }
 
   private static Props propsOf(String actorBeanName) {
@@ -29,6 +31,11 @@ public abstract class ActorFactory {
   }
 
   public static synchronized ActorRef actorOf(Class<? extends UntypedActor> actorBeanType) {
+    ActorRef actor = create(actorBeanType);
+    return ThrottlerUtils.getThrottler(actorSystem, actor);
+  }
+
+  static ActorRef create(Class<? extends UntypedActor> actorBeanType) {
     final String actorBeanName = RoleUtils.getRole(actorBeanType).getRole();
     ActorRef actor = cache.computeIfAbsent(actorBeanName, ActorFactory::create);
     if (actor.isTerminated()) {
@@ -36,15 +43,11 @@ public abstract class ActorFactory {
       actor = create(actorBeanName);
       cache.put(actorBeanName, actor);
     }
-
     return actor;
   }
 
   private static ActorRef create(String actorBeanName) {
-    ActorSystem actorSystem = applicationContext.getBean(ActorSystem.class);
     LOGGER.info("Created actor: {}", actorBeanName);
-    ActorRef actor = actorSystem.actorOf(propsOf(actorBeanName), actorBeanName);
-
-    return ThrottlerUtils.getThrottler(actorSystem, actor);
+    return actorSystem.actorOf(propsOf(actorBeanName), actorBeanName);
   }
 }

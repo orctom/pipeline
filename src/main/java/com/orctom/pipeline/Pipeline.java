@@ -126,8 +126,6 @@ public class Pipeline {
     if (null == applicationContext) {
       applicationContext = new AnnotationConfigApplicationContext(configurationClass);
     }
-
-    ActorFactory.setApplicationContext(applicationContext);
   }
 
   @SuppressWarnings("unchecked")
@@ -172,6 +170,8 @@ public class Pipeline {
 
     GenericApplicationContext context = ((GenericApplicationContext) applicationContext);
     context.getBeanFactory().registerSingleton("system", system);
+
+    ActorFactory.setApplicationContext(applicationContext);
   }
 
   private String getClusterName() {
@@ -185,7 +185,7 @@ public class Pipeline {
   private void createActors(Set<Class<? extends UntypedActor>> untypedActorTypes) {
     for (Class<? extends UntypedActor> actorType : untypedActorTypes) {
       // start the actor
-      ActorRef actor = ActorFactory.actorOf(actorType);
+      ActorRef actor = ActorFactory.create(actorType);
 
       if (PipeActor.class.isAssignableFrom(actorType)) {
         LOGGER.info("Found pipeline actor: {}", actorType);
