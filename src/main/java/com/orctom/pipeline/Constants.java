@@ -8,12 +8,16 @@ public class Constants {
   static final String PIPELINE_HOST = "pipeline.host";
   static final String PIPELINE_PORT = "pipeline.port";
   static final String PIPELINE_ZK_URL = "pipeline.zk.url";
+  public static final String PIPELINE_THROTTLE = "pipeline.throttle";
 
   static final String CFG_NAME = PIPELINE_NAME;
   static final String CFG_HOST = "akka.remote.netty.tcp.hostname";
   static final String CFG_PORT = "akka.remote.netty.tcp.port";
   static final String CFG_ZK_URL = "akka.cluster.seed.zookeeper.url";
+  static final String CFG_THROTTLE = PIPELINE_THROTTLE;
   static final String CFG_ROLES = "akka.cluster.roles";
+
+  public static final String DEFAULT_THROTTLE = "5000";
 
   public static final Pattern PATTERN_NAME = Pattern.compile("[0-9a-zA-Z-_]+");
   public static final int MAX_LEN_NAMES = 20;

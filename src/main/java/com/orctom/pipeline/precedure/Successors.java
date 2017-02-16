@@ -113,14 +113,19 @@ public class Successors implements RMQConsumer {
   }
 
   private void scheduleResendUnAckedMessages() {
-    scheduler.scheduleWithFixedDelay(() -> messageQueue.iterateSentMessages(message -> {
-      String role = message.getRole();
-      GroupSuccessors successors = groups.get(role);
-      if (null == successors) {
+    scheduler.scheduleWithFixedDelay(() ->  {
+      if (groups.isEmpty()) {
         return;
       }
-      successors.sendMessage(message, actor);
-    }), 2, 5, TimeUnit.SECONDS);
+      messageQueue.iterateSentMessages(message -> {
+        String role = message.getRole();
+        GroupSuccessors successors = groups.get(role);
+        if (null == successors) {
+          return;
+        }
+        successors.sendMessage(message, actor);
+      });
+    }, 2, 5, TimeUnit.SECONDS);
   }
 
   String getRoles() {

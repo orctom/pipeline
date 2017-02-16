@@ -9,7 +9,6 @@ import com.orctom.pipeline.model.RemoteMetricsCollectorActors;
 import com.orctom.pipeline.model.SuccessorActor;
 import com.orctom.pipeline.persist.MessageQueue;
 import com.orctom.pipeline.util.RoleUtils;
-import com.orctom.pipeline.util.SimpleMetricCallback;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQConsumer;
@@ -17,7 +16,6 @@ import com.orctom.rmq.RMQOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.orctom.pipeline.Constants.*;
@@ -119,12 +117,6 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
   }
 
   public abstract Ack onMessage(Message message);
-
-  private void addSuccessors(String role, List<ActorRef> actorRefs) {
-    for (ActorRef actorRef : actorRefs) {
-      addSuccessor(role, actorRef);
-    }
-  }
 
   private void addSuccessor(String role, ActorRef actorRef) {
     logger.debug("Adding as routee {}.", actorRef.toString());

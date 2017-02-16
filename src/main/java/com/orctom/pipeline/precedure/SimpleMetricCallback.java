@@ -1,4 +1,4 @@
-package com.orctom.pipeline.util;
+package com.orctom.pipeline.precedure;
 
 import akka.actor.ActorRef;
 import com.orctom.laputa.model.Metric;

@@ -26,6 +26,7 @@ public class Configurator {
     config(node, PIPELINE_HOST, pipeline, CFG_HOST);
     config(node, PIPELINE_PORT, pipeline, CFG_PORT);
     config(node, PIPELINE_ZK_URL, pipeline, CFG_ZK_URL);
+    config(node, PIPELINE_THROTTLE, pipeline, CFG_THROTTLE, DEFAULT_THROTTLE);
     pipeline.put(CFG_ROLES, Splitter.on(",").omitEmptyStrings().trimResults().splitToList(roles));
 
     config = ConfigFactory.parseMap(pipeline)
@@ -34,13 +35,28 @@ public class Configurator {
   }
 
   private void config(Config node, String property, Map<String, Object> pipeline, String key) {
-    String value = System.getProperty(property, node.getString(property));
+    config(node, property, pipeline, key, null);
+  }
+
+  private void config(Config node, String property, Map<String, Object> pipeline, String key, String defaultValue) {
+    String value = getConfig(node, property, defaultValue);
     if (Strings.isNullOrEmpty(value)) {
       throw new IllegalConfigException(property + " expected, but is null or empty");
     }
 
-    LOGGER.info("{}: {}", key, value);
+    LOGGER.info("{}: {}", property, value);
     pipeline.put(key, value);
+  }
+
+  private String getConfig(Config conf, String property, String defaultValue) {
+    String value = System.getProperty(property);
+    if (!Strings.isNullOrEmpty(value)) {
+      return value;
+    }
+    if (conf.hasPath(property)) {
+      return conf.getString(property);
+    }
+    return defaultValue;
   }
 
   public static Configurator getInstance(String applicationName, String roles) {

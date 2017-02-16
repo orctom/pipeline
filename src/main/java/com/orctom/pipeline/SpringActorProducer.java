@@ -1,4 +1,4 @@
-package com.orctom.pipeline.util;
+package com.orctom.pipeline;
 
 import akka.actor.Actor;
 import akka.actor.IndirectActorProducer;

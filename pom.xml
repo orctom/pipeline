@@ -58,7 +58,7 @@
     <dependency>
       <groupId>com.sclasen</groupId>
       <artifactId>akka-zk-cluster-seed_2.11</artifactId>
-      <version>0.1.6</version>
+      <version>0.1.8</version>
     </dependency>
 
     <dependency>

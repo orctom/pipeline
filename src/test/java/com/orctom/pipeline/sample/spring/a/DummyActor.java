@@ -57,11 +57,11 @@ public class DummyActor extends UntypedActor {
           service.count("d2");
           LOGGER.debug("counter2: {}", counter2.incrementAndGet());
         }
-        try {
-          TimeUnit.MILLISECONDS.sleep(RandomUtils.nextLong(1, 500));
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+//        try {
+//          TimeUnit.MILLISECONDS.sleep(1);
+//        } catch (InterruptedException e) {
+//          e.printStackTrace();
+//        }
       }
     });
   }
