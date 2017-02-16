@@ -30,8 +30,9 @@ public class Configurator {
     pipeline.put(CFG_ROLES, Splitter.on(",").omitEmptyStrings().trimResults().splitToList(roles));
 
     config = ConfigFactory.parseMap(pipeline)
+        .withFallback(ConfigFactory.load("pipeline"))
         .withFallback(node)
-        .withFallback(ConfigFactory.load());
+    ;
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(config.toString());
