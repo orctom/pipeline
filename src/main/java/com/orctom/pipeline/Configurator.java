@@ -32,6 +32,10 @@ public class Configurator {
     config = ConfigFactory.parseMap(pipeline)
         .withFallback(node)
         .withFallback(ConfigFactory.load());
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(config.toString());
+    }
   }
 
   private void config(Config node, String property, Map<String, Object> pipeline, String key) {
