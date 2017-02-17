@@ -167,6 +167,9 @@ public class Pipeline {
     LOGGER.info("Bootstrapping {} with roles of {}", applicationName, roles);
     String cluster = getClusterName();
     system = ActorSystem.create(cluster, config);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(system.settings().toString());
+    }
 
     GenericApplicationContext context = ((GenericApplicationContext) applicationContext);
     context.getBeanFactory().registerSingleton("system", system);

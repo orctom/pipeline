@@ -2,6 +2,7 @@ package com.orctom.pipeline.sample.spring.a;
 
 import akka.actor.ActorRef;
 import akka.actor.UntypedActor;
+import com.google.common.util.concurrent.RateLimiter;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.orctom.pipeline.ActorFactory;
 import com.orctom.pipeline.Pipeline;
@@ -22,6 +23,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class DummyActor extends UntypedActor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DummyActor.class);
+
+  private RateLimiter throttler = RateLimiter.create(5000);
 
   private ActorRef roleA = ActorFactory.actorOf(RoleA.class);
 
@@ -46,6 +49,7 @@ public class DummyActor extends UntypedActor {
             IdUtils.generate(),
             RandomStringUtils.randomAlphanumeric(400).getBytes()
         );
+        throttler.acquire();
         if (i % 2 == 0) {
           roleA.tell(msg, getSelf());
           service.count("d1");

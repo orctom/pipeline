@@ -31,12 +31,7 @@ public class Configurator {
 
     config = ConfigFactory.parseMap(pipeline)
         .withFallback(ConfigFactory.load("pipeline"))
-        .withFallback(node)
-    ;
-
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(config.toString());
-    }
+        .withFallback(node);
   }
 
   private void config(Config node, String property, Map<String, Object> pipeline, String key) {

@@ -3,12 +3,14 @@ package com.orctom.pipeline.precedure;
 import akka.actor.ActorRef;
 import akka.actor.Terminated;
 import akka.actor.UntypedActor;
+import com.google.common.util.concurrent.RateLimiter;
 import com.orctom.laputa.utils.SimpleMetrics;
 import com.orctom.pipeline.model.MessageAck;
 import com.orctom.pipeline.model.RemoteMetricsCollectorActors;
 import com.orctom.pipeline.model.SuccessorActor;
 import com.orctom.pipeline.persist.MessageQueue;
 import com.orctom.pipeline.util.RoleUtils;
+import com.orctom.pipeline.util.ThrottlerUtils;
 import com.orctom.rmq.Ack;
 import com.orctom.rmq.Message;
 import com.orctom.rmq.RMQConsumer;
@@ -29,6 +31,8 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
 
   protected Logger logger = LoggerFactory.getLogger(getClass());
 
+  RateLimiter throttler;
+
   SimpleMetrics metrics = SimpleMetrics.create(logger, 5, TimeUnit.SECONDS);
   MessageQueue messageQueue = MessageQueue.getInstance(new RMQOptions(getRole()), metrics);
 
@@ -39,9 +43,14 @@ public abstract class PipeActor extends UntypedActor implements RMQConsumer {
   @Override
   public final void preStart() throws Exception {
     logger.debug("Staring actor: {}...", getSelf().toString());
+    initRateLimiter();
     subscribeInbox();
     initMetricsCollectorCallback();
     started();
+  }
+
+  private void initRateLimiter() {
+    throttler = RateLimiter.create(ThrottlerUtils.getThrottle());
   }
 
   private void initMetricsCollectorCallback() {

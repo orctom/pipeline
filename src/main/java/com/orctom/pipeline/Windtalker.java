@@ -1,11 +1,8 @@
 package com.orctom.pipeline;
 
-import akka.actor.ActorRef;
-import akka.actor.ActorSelection;
-import akka.actor.UntypedActor;
+import akka.actor.*;
 import akka.cluster.Cluster;
-import akka.cluster.ClusterEvent.CurrentClusterState;
-import akka.cluster.ClusterEvent.MemberUp;
+import akka.cluster.ClusterEvent.*;
 import akka.cluster.Member;
 import akka.cluster.MemberStatus;
 import com.google.common.base.Joiner;
@@ -14,6 +11,7 @@ import com.orctom.laputa.utils.MutableInt;
 import com.orctom.pipeline.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.concurrent.Await;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -53,8 +51,30 @@ class Windtalker extends UntypedActor {
   public void preStart() throws Exception {
     LOGGER.debug("Staring Windtalker... {}", hasPredecessors() ? (interestedRoles + " -> this") : "as [Hydrant]");
 
-    cluster.subscribe(getSelf(), MemberUp.class);
+    cluster.subscribe(
+        getSelf(),
+        MemberUp.class,
+        ReachableMember.class,
+        UnreachableMember.class,
+        MemberRemoved.class,
+        LeaderChanged.class
+    );
+    registerMemberRemovedEvent();
     startResendingThread();
+  }
+
+  private void registerMemberRemovedEvent() {
+    cluster.registerOnMemberRemoved(() -> {
+      ActorSystem system = cluster.system();
+      system.registerOnTermination(() -> System.exit(0));
+      system.terminate();
+
+      try {
+        Await.ready(system.whenTerminated(), scala.concurrent.duration.Duration.create(10, TimeUnit.SECONDS));
+      } catch (Exception e) {
+        System.exit(-1);
+      }
+    });
   }
 
   @Override
@@ -120,6 +140,29 @@ class Windtalker extends UntypedActor {
       MemberUp mUp = (MemberUp) message;
       LOGGER.trace("Member {} is up.", mUp.member().toString());
       registerMember(mUp.member());
+
+    } else if (message instanceof UnreachableMember) {
+      UnreachableMember mUnreachable = (UnreachableMember) message;
+      Member member = mUnreachable.member();
+      LOGGER.warn("Member detected as unreachable: {}", member);
+      if (member.address() == cluster.selfAddress()) {
+        LOGGER.warn("Should rejoin");
+      }
+
+    } else if (message instanceof ReachableMember) {
+      ReachableMember mReachable = (ReachableMember) message;
+      Member member = mReachable.member();
+      LOGGER.warn("Member detected as reachable: {}", member);
+
+    } else if (message instanceof MemberRemoved) {
+      MemberRemoved memberRemoved = (MemberRemoved) message;
+      Member member = memberRemoved.member();
+      LOGGER.warn("Member detected as removed: {}", member);
+
+    } else if (message instanceof LeaderChanged) {
+      LeaderChanged leaderChanged = (LeaderChanged) message;
+      Address leader = leaderChanged.getLeader();
+      LOGGER.warn("Leader changed to: {}", leader);
 
     } else {
       unhandled(message);

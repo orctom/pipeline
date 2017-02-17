@@ -14,7 +14,7 @@ import static com.orctom.pipeline.Constants.PIPELINE_THROTTLE;
 
 public abstract class ThrottlerUtils {
 
-  private static int getThrottle() {
+  public static int getThrottle() {
     return Pipeline.getInstance()
         .getConfig()
         .getInt(PIPELINE_THROTTLE);

@@ -25,6 +25,12 @@ public abstract class Hydrant extends PipeActor implements Runnable {
   }
 
   @Override
+  protected void sendToSuccessors(Message message) {
+    throttler.acquire();
+    super.sendToSuccessors(message);
+  }
+
+  @Override
   public abstract void run();
 
   @Override
