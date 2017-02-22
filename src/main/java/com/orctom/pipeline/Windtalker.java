@@ -136,9 +136,9 @@ class Windtalker extends UntypedActor {
       }
 
     } else if (message instanceof MemberUp) {
-      LOGGER.trace("Processing MemberUp event.");
+      LOGGER.warn("Processing MemberUp event.");
       MemberUp mUp = (MemberUp) message;
-      LOGGER.trace("Member {} is up.", mUp.member().toString());
+      LOGGER.warn("Member {} is up.", mUp.member().toString());
       registerMember(mUp.member());
 
     } else if (message instanceof UnreachableMember) {

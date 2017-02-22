@@ -30,12 +30,12 @@ public abstract class ActorFactory {
     return Props.create(SpringActorProducer.class, ActorFactory.applicationContext, actorBeanName);
   }
 
-  public static synchronized ActorRef actorOf(Class<? extends UntypedActor> actorBeanType) {
-    ActorRef actor = create(actorBeanType);
+  public static synchronized ActorRef throttledActorOf(Class<? extends UntypedActor> actorBeanType) {
+    ActorRef actor = actorOf(actorBeanType);
     return ThrottlerUtils.getThrottler(actorSystem, actor);
   }
 
-  static ActorRef create(Class<? extends UntypedActor> actorBeanType) {
+  public static ActorRef actorOf(Class<? extends UntypedActor> actorBeanType) {
     final String actorBeanName = RoleUtils.getRole(actorBeanType).getRole();
     ActorRef actor = cache.computeIfAbsent(actorBeanName, ActorFactory::create);
     if (actor.isTerminated()) {

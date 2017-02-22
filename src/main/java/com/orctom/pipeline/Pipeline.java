@@ -188,7 +188,7 @@ public class Pipeline {
   private void createActors(Set<Class<? extends UntypedActor>> untypedActorTypes) {
     for (Class<? extends UntypedActor> actorType : untypedActorTypes) {
       // start the actor
-      ActorRef actor = ActorFactory.create(actorType);
+      ActorRef actor = ActorFactory.actorOf(actorType);
 
       if (PipeActor.class.isAssignableFrom(actorType)) {
         LOGGER.info("Found pipeline actor: {}", actorType);
